@@ -1,0 +1,15 @@
+__pycache__/
+build/
+dist/
+_internal/
+
+Planning To ICS.exe
+
+*.pyc
+*.pyo
+*.log
+*.ics
+*.zip
+
+.venv/
+venv/
