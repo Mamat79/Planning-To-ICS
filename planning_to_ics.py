@@ -30,6 +30,7 @@ OUTPUT_DIR = Path(r"D:\Cloud\OneDrive - Radio France\Radio-France\02 - Plannings
 DEFAULT_PERSON = "Matthieu Leroy"
 DEFAULT_TIMEZONE = "Europe/Paris"
 ICS_FILE_ENCODING = "utf-8"
+ICS_FILE_BOM = b"\xef\xbb\xbf"
 
 MONTHS_FR = {
     "janvier": 1,
@@ -1100,14 +1101,14 @@ def ics_escape(value: str) -> str:
 
 
 def fold_ics_line(line: str) -> str:
-    encoded = line.encode(ICS_FILE_ENCODING, errors="replace")
+    encoded = line.encode(ICS_FILE_ENCODING)
     if len(encoded) <= 75:
         return line
     parts: list[str] = []
     current = ""
     current_len = 0
     for ch in line:
-        ch_len = len(ch.encode(ICS_FILE_ENCODING, errors="replace"))
+        ch_len = len(ch.encode(ICS_FILE_ENCODING))
         if current and current_len + ch_len > 75:
             parts.append(current)
             current = " " + ch
@@ -1145,7 +1146,7 @@ def build_ics(result: ExtractionResult) -> str:
         "PRODID:-//Planning Radio France Local Agent//FR",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
-        f"X-WR-CALNAME;CHARSET=UTF-8:Planning {ics_escape(result.person_name)} S{result.week:02d} {result.year}",
+        f"X-WR-CALNAME:Planning {ics_escape(result.person_name)} S{result.week:02d} {result.year}",
         f"X-WR-TIMEZONE:{DEFAULT_TIMEZONE}",
     ]
     for event in result.events:
@@ -1162,8 +1163,8 @@ def build_ics(result: ExtractionResult) -> str:
                 f"DTSTAMP:{now.strftime('%Y%m%dT%H%M%SZ')}",
                 f"DTSTART:{utc_stamp(event.start)}",
                 f"DTEND:{utc_stamp(event.end)}",
-                f"SUMMARY;CHARSET=UTF-8:{ics_escape(event.summary)}",
-                f"DESCRIPTION;CHARSET=UTF-8:{ics_escape(description)}",
+                f"SUMMARY:{ics_escape(event.summary)}",
+                f"DESCRIPTION:{ics_escape(description)}",
                 "END:VEVENT",
             ]
         )
@@ -1177,7 +1178,8 @@ def output_ics_path(output_dir: Path, result: ExtractionResult) -> Path:
 
 
 def write_ics_file(path: Path, result: ExtractionResult) -> None:
-    path.write_bytes(build_ics(result).encode(ICS_FILE_ENCODING, errors="replace"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(ICS_FILE_BOM + build_ics(result).encode(ICS_FILE_ENCODING))
 
 
 def write_log(output_dir: Path, result: ExtractionResult, ics_path: Path | None) -> None:

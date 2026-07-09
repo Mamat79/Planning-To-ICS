@@ -39,7 +39,7 @@ from planning_to_ics import (
     write_log,
 )
 
-APP_VERSION = "V1.02"
+APP_VERSION = "V1.03"
 SETTINGS_KEYS = {"planning_dir", "output_dir"}
 
 
@@ -432,6 +432,16 @@ def page_shell(
       font-size: 12px;
       overflow-wrap: anywhere;
     }}
+    .import-note {{
+      margin: 16px 0 0;
+      padding: 11px 13px;
+      border: 1px solid #cbded8;
+      border-radius: 6px;
+      background: #f1faf7;
+      color: #174f3f;
+      line-height: 1.45;
+      font-size: 13px;
+    }}
     .ok, .error {{
       margin: 0 0 16px;
       padding: 12px 14px;
@@ -497,6 +507,7 @@ def page_shell(
         <button type="submit" name="action" value="generate">Générer ICS</button>
         <button class="secondary" type="submit" name="action" value="preview">Prévisualiser</button>
       </div>
+      <p class="import-note">Après génération, importe le fichier ICS dans ton agenda Outlook, Google Agenda ou autre calendrier. L'application crée le fichier, elle ne l'ajoute pas automatiquement à l'agenda.</p>
     </form>
     <section>
       {content}
@@ -639,6 +650,7 @@ def render_home() -> bytes:
     content = """
       <h2>Choisir un planning PDF</h2>
       <p class="empty">Choisis le dossier des plannings, sélectionne un PDF dans la liste, choisis le technicien, puis prévisualise ou génère l'ICS.</p>
+      <p class="import-note">Une fois le fichier ICS généré, il faut l'importer dans ton agenda. Dans Outlook, utilise l'import de calendrier ou ouvre le fichier ICS pour l'ajouter au calendrier voulu.</p>
     """
     return page_shell(
         content,
@@ -837,6 +849,7 @@ def run_generation(fields: dict[str, str]) -> bytes:
             summary_html = html.escape(format_summary(result))
             content = f"""
               <p class="ok">ICS modifié généré : <code>{html.escape(str(ics_path))}</code></p>
+              <p class="import-note">Dernière étape : importe ce fichier ICS dans ton agenda. Le fichier est prêt, mais il n'est pas ajouté automatiquement dans Outlook ou Google Agenda.</p>
               <h2>Résumé exporté</h2>
               <pre>{summary_html}</pre>
             """
@@ -870,6 +883,7 @@ def run_generation(fields: dict[str, str]) -> bytes:
         ics_path = export_result(result, output_dir)
         content = f"""
           <p class="ok">ICS généré : <code>{html.escape(str(ics_path))}</code></p>
+          <p class="import-note">Dernière étape : importe ce fichier ICS dans ton agenda. Le fichier est prêt, mais il n'est pas ajouté automatiquement dans Outlook ou Google Agenda.</p>
           <h2>Résumé</h2>
           <pre>{summary_html}</pre>
         """
