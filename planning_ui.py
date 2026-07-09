@@ -39,7 +39,7 @@ from planning_to_ics import (
     write_log,
 )
 
-APP_VERSION = "V1.03"
+APP_VERSION = "V1.04"
 SETTINGS_KEYS = {"planning_dir", "output_dir"}
 
 
@@ -356,8 +356,14 @@ def page_shell(
       background: #fff;
       color: var(--accent);
     }}
+    button.ghost {{
+      border-color: #b7bdc7;
+      background: #fff;
+      color: var(--muted);
+    }}
     button:hover {{ border-color: var(--accent-strong); background: var(--accent-strong); }}
     button.secondary:hover {{ background: #eef7f5; color: var(--accent-strong); }}
+    button.ghost:hover {{ border-color: #8f96a3; background: #f2f4f7; color: var(--text); }}
     section {{
       padding: 24px;
       overflow: auto;
@@ -506,6 +512,7 @@ def page_shell(
       <div class="actions">
         <button type="submit" name="action" value="generate">Générer ICS</button>
         <button class="secondary" type="submit" name="action" value="preview">Prévisualiser</button>
+        <button class="ghost" type="submit" name="action" value="quit" formnovalidate>Quitter l'application</button>
       </div>
       <p class="import-note">Après génération, importe le fichier ICS dans ton agenda Outlook, Google Agenda ou autre calendrier. L'application crée le fichier, elle ne l'ajoute pas automatiquement à l'agenda.</p>
     </form>
@@ -658,6 +665,21 @@ def render_home() -> bytes:
         planning_dir=settings["planning_dir"],
         output_dir=settings["output_dir"],
     )
+
+
+def render_shutdown_page() -> bytes:
+    content = """
+      <h2>Application arrêtée</h2>
+      <p class="empty">Planning To ICS est fermé. Tu peux fermer cet onglet du navigateur.</p>
+      <script>
+        window.addEventListener('load', () => {
+          setTimeout(() => {
+            fetch('/shutdown', {method: 'POST', keepalive: true}).catch(() => {});
+          }, 250);
+        });
+      </script>
+    """
+    return page_shell(content, people=[])
 
 
 def parse_post(body: bytes) -> dict[str, str]:
@@ -1108,15 +1130,32 @@ class PlanningHandler(BaseHTTPRequestHandler):
                 content_type="application/json; charset=utf-8",
             )
             return
+        if parsed.path == "/shutdown":
+            self._shutdown_after_response = True
+            self.respond(b"OK", content_type="text/plain; charset=utf-8")
+            return
         fields = parse_post(body)
+        if fields.get("action") == "quit":
+            self.respond(render_shutdown_page())
+            return
         self.respond(run_generation(fields))
 
     def respond(self, body: bytes, status: int = 200, content_type: str = "text/html; charset=utf-8") -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(body)
+        self.wfile.flush()
+        self.close_connection = True
+
+    def finish(self) -> None:
+        try:
+            super().finish()
+        finally:
+            if getattr(self, "_shutdown_after_response", False):
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
 
     def log_message(self, format: str, *args: Any) -> None:
         return
@@ -1139,8 +1178,11 @@ def main() -> int:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
 
     print(f"Interface Planning To ICS: {url}")
-    print("Ferme cette fenêtre pour arrêter l'interface.")
-    server.serve_forever()
+    print("Utilise le bouton Quitter l'application dans l'interface pour arrêter le serveur local.")
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()
     return 0
 
 

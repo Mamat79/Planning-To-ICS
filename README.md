@@ -1,4 +1,4 @@
-# Planning To ICS V1.03
+# Planning To ICS V1.04
 
 Application locale pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
 
@@ -9,7 +9,7 @@ Signature interface : `by Mamat`.
 Envoyer et lancer l'installateur :
 
 ```text
-installer-output\Planning_To_ICS_V1.03_Setup.exe
+installer-output\Planning_To_ICS_V1.04_Setup.exe
 ```
 
 L'installateur contient l'application compilée et ses dépendances. Python n'est pas nécessaire sur le PC cible.
@@ -21,6 +21,8 @@ L'assistant d'installation permet de choisir le dossier d'installation. Par déf
 ```
 
 L'assistant propose la création de raccourcis, avec un raccourci dans le menu Démarrer coché par défaut. Le raccourci Bureau reste optionnel.
+
+Si une version de Planning To ICS est déjà installée, l'assistant le détecte au démarrage. Il propose soit de remplacer la version existante, soit d'installer la nouvelle version en plus dans un autre dossier avec des raccourcis séparés.
 
 ## Usage
 
@@ -35,13 +37,16 @@ L'interface locale s'ouvre dans le navigateur avec :
 - le choix du dossier d'export du `.ics` ;
 - un bouton de prévisualisation ;
 - la modification des événements après prévisualisation ;
-- un bouton de génération ICS.
+- un bouton de génération ICS ;
+- un bouton `Quitter l'application` pour arrêter le serveur local quand tu as terminé.
 
 Le dossier des plannings et le dossier d'export sont mémorisés entre deux lancements.
 
 Après `Prévisualiser`, les événements extraits apparaissent dans un tableau modifiable. Tu peux décocher un événement, changer le résumé, les dates, les heures ou la description, puis cliquer sur `Exporter ICS modifié`.
 
 Une fois le fichier `.ics` généré, il faut l'importer dans l'agenda voulu. L'application crée le fichier ICS, mais elle ne l'ajoute pas automatiquement dans Outlook, Google Agenda ou un autre calendrier.
+
+L'application compilée ne laisse pas de fenêtre CMD visible. Si tu fermes seulement l'onglet du navigateur, l'application peut continuer en arrière-plan ; utilise `Quitter l'application` pour la fermer proprement.
 
 ## Règles appliquées
 

@@ -1,10 +1,10 @@
 #define MyAppName "Planning To ICS"
-#define MyAppVersion "1.03"
+#define MyAppVersion "1.04"
 #define MyAppPublisher "Mamat"
 #define MyAppExeName "Planning To ICS.exe"
 
 [Setup]
-AppId={{7B716F39-4D44-42CF-8CB7-57B8BE0F0B8D}
+AppId=PlanningToICS-{#MyAppVersion}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
@@ -15,7 +15,7 @@ DisableDirPage=no
 DisableProgramGroupPage=no
 PrivilegesRequired=lowest
 OutputDir=..\installer-output
-OutputBaseFilename=Planning_To_ICS_V1.03_Setup
+OutputBaseFilename=Planning_To_ICS_V1.04_Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -33,10 +33,153 @@ Source: "..\dist\Planning To ICS\*"; DestDir: "{app}"; Flags: ignoreversion recu
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon
-Name: "{group}\PDF to ICS"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon
-Name: "{userprograms}\PDF to ICS"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon
+Name: "{group}\PDF to ICS{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon
+Name: "{userprograms}\PDF to ICS{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon
+Name: "{autodesktop}\{#MyAppName}{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Lancer {#MyAppName}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+var
+  ExistingCount: Integer;
+  ExistingSummary: String;
+  ExistingUninstallCommands: array of String;
+  InstallMode: Integer;
+
+procedure AddExistingInstall(DisplayName, DisplayVersion, InstallLocation, UninstallCommand: String);
+var
+  LabelText: String;
+begin
+  SetArrayLength(ExistingUninstallCommands, ExistingCount + 1);
+  ExistingUninstallCommands[ExistingCount] := UninstallCommand;
+  ExistingCount := ExistingCount + 1;
+
+  LabelText := DisplayName;
+  if DisplayVersion <> '' then
+    LabelText := LabelText + ' ' + DisplayVersion;
+  if InstallLocation <> '' then
+    LabelText := LabelText + ' - ' + InstallLocation;
+
+  ExistingSummary := ExistingSummary + '- ' + LabelText + #13#10;
+end;
+
+procedure ScanUninstallRoot(RootKey: Integer);
+var
+  Subkeys: TArrayOfString;
+  I: Integer;
+  Key: String;
+  DisplayName: String;
+  DisplayVersion: String;
+  InstallLocation: String;
+  QuietUninstallString: String;
+  UninstallString: String;
+  UninstallCommand: String;
+begin
+  if not RegGetSubkeyNames(RootKey, 'Software\Microsoft\Windows\CurrentVersion\Uninstall', Subkeys) then
+    exit;
+
+  for I := 0 to GetArrayLength(Subkeys) - 1 do
+  begin
+    Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' + Subkeys[I];
+    DisplayName := '';
+    DisplayVersion := '';
+    InstallLocation := '';
+    QuietUninstallString := '';
+    UninstallString := '';
+    UninstallCommand := '';
+
+    if RegQueryStringValue(RootKey, Key, 'DisplayName', DisplayName) then
+    begin
+      if Pos('{#MyAppName}', DisplayName) = 1 then
+      begin
+        RegQueryStringValue(RootKey, Key, 'DisplayVersion', DisplayVersion);
+        RegQueryStringValue(RootKey, Key, 'InstallLocation', InstallLocation);
+
+        if RegQueryStringValue(RootKey, Key, 'QuietUninstallString', QuietUninstallString) then
+          UninstallCommand := QuietUninstallString
+        else if RegQueryStringValue(RootKey, Key, 'UninstallString', UninstallString) then
+          UninstallCommand := UninstallString + ' /VERYSILENT /SUPPRESSMSGBOXES /NORESTART';
+
+        AddExistingInstall(DisplayName, DisplayVersion, InstallLocation, UninstallCommand);
+      end;
+    end;
+  end;
+end;
+
+procedure ScanExistingInstalls();
+begin
+  ExistingCount := 0;
+  ExistingSummary := '';
+  SetArrayLength(ExistingUninstallCommands, 0);
+  ScanUninstallRoot(HKCU);
+  ScanUninstallRoot(HKLM);
+end;
+
+function InitializeSetup(): Boolean;
+var
+  Choice: Integer;
+begin
+  Result := True;
+  InstallMode := 0;
+  ScanExistingInstalls();
+
+  if ExistingCount > 0 then
+  begin
+    if WizardSilent() then
+      exit;
+
+    Choice := MsgBox(
+      '{#MyAppName} est déjà installé :' + #13#10 + #13#10 +
+      ExistingSummary + #13#10 +
+      'Oui : remplacer la version existante.' + #13#10 +
+      'Non : installer cette version en plus, dans un autre dossier.' + #13#10 +
+      'Annuler : arrêter l''installation.',
+      mbConfirmation,
+      MB_YESNOCANCEL
+    );
+
+    if Choice = IDYES then
+      InstallMode := 0
+    else if Choice = IDNO then
+      InstallMode := 1
+    else
+      Result := False;
+  end;
+end;
+
+procedure InitializeWizard();
+begin
+  if InstallMode = 1 then
+  begin
+    WizardForm.DirEdit.Text := ExpandConstant('{localappdata}\Programs\{#MyAppName} {#MyAppVersion}');
+    WizardForm.GroupEdit.Text := '{#MyAppName} {#MyAppVersion}';
+  end;
+end;
+
+function GetShortcutSuffix(Param: String): String;
+begin
+  if InstallMode = 1 then
+    Result := ' {#MyAppVersion}'
+  else
+    Result := '';
+end;
+
+procedure UninstallExistingInstalls();
+var
+  I: Integer;
+  ResultCode: Integer;
+begin
+  for I := 0 to ExistingCount - 1 do
+  begin
+    if ExistingUninstallCommands[I] <> '' then
+      Exec(ExpandConstant('{cmd}'), '/C "' + ExistingUninstallCommands[I] + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if (CurStep = ssInstall) and (InstallMode = 0) and (ExistingCount > 0) then
+    UninstallExistingInstalls();
+end;
