@@ -1,2 +1,3 @@
 pdfplumber>=0.11
 pypdf>=5
+pywebview>=6,<7

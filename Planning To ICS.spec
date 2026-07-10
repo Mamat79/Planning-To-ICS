@@ -1,12 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 a = Analysis(
     ['planning_ui.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['tkinter', 'tkinter.filedialog'],
+    hiddenimports=['tkinter', 'tkinter.filedialog', 'webview'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

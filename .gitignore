@@ -1,7 +1,10 @@
 __pycache__/
+.pytest_cache/
 build/
 dist/
 _internal/
+tmp/
+installer-output/*.exe
 
 Planning To ICS.exe
 Planning to ICS.exe

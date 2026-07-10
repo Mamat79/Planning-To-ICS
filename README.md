@@ -1,4 +1,4 @@
-# Planning to ICS V1.05
+# Planning to ICS V1.06
 
 Application locale pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
 
@@ -6,10 +6,10 @@ Signature interface : `by Mamat`.
 
 ## Installation sur un autre PC
 
-Envoyer et lancer l'installateur :
+Télécharger l'installateur depuis la page [Releases GitHub](https://github.com/Mamat79/Planning-To-ICS/releases) :
 
 ```text
-installer-output\Planning_to_ICS_V1.05_Setup.exe
+Planning_to_ICS_V1.06_Setup.exe
 ```
 
 L'installateur contient l'application compilée et ses dépendances. Python n'est pas nécessaire sur le PC cible.
@@ -28,17 +28,19 @@ Si une version de Planning to ICS ou Planning To ICS est déjà installée, l'as
 
 Lancer `Planning to ICS` depuis le menu Démarrer.
 
-L'interface locale s'ouvre dans le navigateur avec :
+L'application s'ouvre dans une fenêtre Windows dédiée avec :
 
 - le choix du dossier où se trouvent les plannings PDF par défaut ;
 - la liste de tous les PDF trouvés dans ce dossier et ses sous-dossiers ;
 - le choix manuel d'un PDF ailleurs sur le disque avec `Parcourir` ;
 - la liste des techniciens du PDF choisi ;
+- un diagnostic indiquant si le planning est compatible, scanné ou non reconnu ;
 - le choix du dossier d'export du `.ics` ;
 - un bouton de prévisualisation ;
 - la modification des événements après prévisualisation ;
 - un bouton de génération ICS ;
-- un bouton `Quitter l'application` pour arrêter le serveur local quand tu as terminé.
+- des boutons pour ouvrir l'ICS ou afficher son dossier après génération ;
+- un bouton `Quitter l'application` et une fermeture complète avec la croix de la fenêtre.
 
 Le dossier des plannings et le dossier d'export sont mémorisés entre deux lancements.
 
@@ -46,7 +48,7 @@ Après `Prévisualiser`, les événements extraits apparaissent dans un tableau 
 
 Une fois le fichier `.ics` généré, il faut l'importer dans l'agenda voulu. L'application crée le fichier ICS, mais elle ne l'ajoute pas automatiquement dans Outlook, Google Agenda ou un autre calendrier.
 
-L'application compilée ne laisse pas de fenêtre CMD visible. Si tu fermes seulement l'onglet du navigateur, l'application peut continuer en arrière-plan ; utilise `Quitter l'application` pour la fermer proprement.
+L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visible. Fermer la fenêtre arrête complètement l'application.
 
 ## Règles appliquées
 
@@ -55,6 +57,7 @@ L'application compilée ne laisse pas de fenêtre CMD visible. Si tu fermes seul
 - Les pauses ne sont pas créées comme événements ; elles découpent le créneau travaillé.
 - Si une fin est inférieure au début, l'événement finit le lendemain.
 - Les titres Outlook retirent le nom du technicien quand il est répété au début de la mission.
+- La semaine et l'année sont lues en priorité dans le contenu du PDF, sans utiliser sa date de copie.
 - L'ICS est écrit en UTF-8 avec des dates UTC compatibles Outlook et la zone `Europe/Paris` en métadonnée.
 - Les PDF source ne sont jamais modifiés.
 
@@ -69,13 +72,19 @@ D:\IA\Projets\Codex\Applis Persos\Planning To ICS
 Installation des dépendances de développement :
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 Lancement sans compilation :
 
 ```powershell
 python .\planning_ui.py
+```
+
+Exécution des tests automatiques :
+
+```powershell
+python -m pytest
 ```
 
 Compilation de l'application :
@@ -89,3 +98,5 @@ Compilation de l'installateur :
 ```powershell
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" ".\installer\PlanningToICS.iss"
 ```
+
+Les installateurs compilés ne sont pas versionnés dans Git. Ils sont joints aux Releases GitHub afin de garder le dépôt source léger.
