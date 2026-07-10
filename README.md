@@ -1,4 +1,4 @@
-# Planning To ICS V1.04
+# Planning to ICS V1.05
 
 Application locale pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
 
@@ -9,7 +9,7 @@ Signature interface : `by Mamat`.
 Envoyer et lancer l'installateur :
 
 ```text
-installer-output\Planning_To_ICS_V1.04_Setup.exe
+installer-output\Planning_to_ICS_V1.05_Setup.exe
 ```
 
 L'installateur contient l'application compilée et ses dépendances. Python n'est pas nécessaire sur le PC cible.
@@ -17,21 +17,21 @@ L'installateur contient l'application compilée et ses dépendances. Python n'es
 L'assistant d'installation permet de choisir le dossier d'installation. Par défaut, l'installation se fait sans droits administrateur dans :
 
 ```text
-%LOCALAPPDATA%\Programs\Planning To ICS
+%LOCALAPPDATA%\Programs\Planning to ICS
 ```
 
 L'assistant propose la création de raccourcis, avec un raccourci dans le menu Démarrer coché par défaut. Le raccourci Bureau reste optionnel.
 
-Si une version de Planning To ICS est déjà installée, l'assistant le détecte au démarrage. Il propose soit de remplacer la version existante, soit d'installer la nouvelle version en plus dans un autre dossier avec des raccourcis séparés.
+Si une version de Planning to ICS ou Planning To ICS est déjà installée, l'assistant le détecte au démarrage. Il propose soit de remplacer la version existante, soit d'installer la nouvelle version en plus dans un autre dossier avec des raccourcis séparés.
 
 ## Usage
 
-Lancer `PDF to ICS` depuis le menu Démarrer.
+Lancer `Planning to ICS` depuis le menu Démarrer.
 
 L'interface locale s'ouvre dans le navigateur avec :
 
 - le choix du dossier où se trouvent les plannings PDF par défaut ;
-- la liste des PDF trouvés dans ce dossier ;
+- la liste de tous les PDF trouvés dans ce dossier et ses sous-dossiers ;
 - le choix manuel d'un PDF ailleurs sur le disque avec `Parcourir` ;
 - la liste des techniciens du PDF choisi ;
 - le choix du dossier d'export du `.ics` ;

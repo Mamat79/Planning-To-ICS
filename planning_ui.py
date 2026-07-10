@@ -39,7 +39,7 @@ from planning_to_ics import (
     write_log,
 )
 
-APP_VERSION = "V1.04"
+APP_VERSION = "V1.05"
 SETTINGS_KEYS = {"planning_dir", "output_dir"}
 
 
@@ -155,21 +155,8 @@ def person_options(people: list[str], selected_person: str = "") -> str:
 def pdf_label(path_text: str) -> str:
     path = Path(path_text)
     parsed = week_year_from_path(path)
-    if not parsed and path.exists():
-        try:
-            parsed = week_year_for_pdf(path)
-        except Exception:
-            parsed = None
     suffix = f" - S{parsed[1]:02d} {parsed[0]}" if parsed else ""
     return f"{path.name}{suffix}"
-
-
-def looks_like_planning_pdf(path: Path) -> bool:
-    normalized = path.name.lower()
-    return bool(
-        re.search(r"(?<![a-z0-9])(?:sem|semaine)\s*0?\d{1,2}(?!\d)", normalized)
-        or re.search(r"(?<![a-z0-9])s\s*0?\d{1,2}(?![a-z0-9])", normalized)
-    )
 
 
 def list_planning_pdfs(planning_dir: str) -> list[str]:
@@ -177,28 +164,14 @@ def list_planning_pdfs(planning_dir: str) -> list[str]:
     if not root.exists():
         return []
     if root.is_file():
-        if root.suffix.lower() != ".pdf":
-            return []
-        if not looks_like_planning_pdf(root):
-            return []
-        try:
-            week_year_for_pdf(root)
-        except Exception:
-            return []
-        return [str(root)]
-    pdfs = []
-    for path in root.rglob("*.pdf"):
-        if not path.is_file():
-            continue
-        if not looks_like_planning_pdf(path):
-            continue
-        try:
-            week_year_for_pdf(path)
-        except Exception:
-            continue
-        pdfs.append(path)
+        return [str(root)] if root.suffix.lower() == ".pdf" else []
+    pdfs = [
+        path
+        for path in root.rglob("*")
+        if path.is_file() and path.suffix.lower() == ".pdf"
+    ]
     pdfs.sort(key=lambda path: (path.stat().st_mtime, path.name.lower()), reverse=True)
-    return [str(path) for path in pdfs[:200]]
+    return [str(path) for path in pdfs]
 
 
 def pdf_select_options(pdfs: list[str], selected_pdf: str = "") -> str:
@@ -240,7 +213,7 @@ def page_shell(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Planning To ICS</title>
+  <title>Planning to ICS</title>
   <style>
     :root {{
       color-scheme: light;
@@ -475,7 +448,7 @@ def page_shell(
 </head>
 <body>
   <header>
-    <h1>Planning To ICS <span class="version">{APP_VERSION}</span></h1>
+    <h1>Planning to ICS <span class="version">{APP_VERSION}</span></h1>
     <div class="signature">by Mamat</div>
   </header>
   <main>
@@ -670,7 +643,7 @@ def render_home() -> bytes:
 def render_shutdown_page() -> bytes:
     content = """
       <h2>Application arrêtée</h2>
-      <p class="empty">Planning To ICS est fermé. Tu peux fermer cet onglet du navigateur.</p>
+      <p class="empty">Planning to ICS est fermé. Tu peux fermer cet onglet du navigateur.</p>
       <script>
         window.addEventListener('load', () => {
           setTimeout(() => {
@@ -1162,7 +1135,7 @@ class PlanningHandler(BaseHTTPRequestHandler):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Lance l'interface locale Planning To ICS.")
+    parser = argparse.ArgumentParser(description="Lance l'interface locale Planning to ICS.")
     parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--no-browser", action="store_true")
     return parser.parse_args()
@@ -1177,7 +1150,7 @@ def main() -> int:
     if not args.no_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
 
-    print(f"Interface Planning To ICS: {url}")
+    print(f"Interface Planning to ICS: {url}")
     print("Utilise le bouton Quitter l'application dans l'interface pour arrêter le serveur local.")
     try:
         server.serve_forever()

@@ -1,7 +1,7 @@
-#define MyAppName "Planning To ICS"
-#define MyAppVersion "1.04"
+#define MyAppName "Planning to ICS"
+#define MyAppVersion "1.05"
 #define MyAppPublisher "Mamat"
-#define MyAppExeName "Planning To ICS.exe"
+#define MyAppExeName "Planning to ICS.exe"
 
 [Setup]
 AppId=PlanningToICS-{#MyAppVersion}
@@ -15,7 +15,7 @@ DisableDirPage=no
 DisableProgramGroupPage=no
 PrivilegesRequired=lowest
 OutputDir=..\installer-output
-OutputBaseFilename=Planning_To_ICS_V1.04_Setup
+OutputBaseFilename=Planning_to_ICS_V1.05_Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -29,13 +29,11 @@ Name: "startmenuicon"; Description: "Créer un raccourci dans le menu Démarrer"
 Name: "desktopicon"; Description: "Créer un raccourci sur le bureau"; GroupDescription: "Raccourcis :"; Flags: unchecked
 
 [Files]
-Source: "..\dist\Planning To ICS\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\Planning to ICS\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon
-Name: "{group}\PDF to ICS{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon
-Name: "{userprograms}\PDF to ICS{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon
 Name: "{autodesktop}\{#MyAppName}{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
@@ -65,6 +63,13 @@ begin
   ExistingSummary := ExistingSummary + '- ' + LabelText + #13#10;
 end;
 
+function IsKnownPlanningToICS(DisplayName: String): Boolean;
+begin
+  Result :=
+    (Pos('Planning To ICS', DisplayName) = 1) or
+    (Pos('Planning to ICS', DisplayName) = 1);
+end;
+
 procedure ScanUninstallRoot(RootKey: Integer);
 var
   Subkeys: TArrayOfString;
@@ -92,7 +97,7 @@ begin
 
     if RegQueryStringValue(RootKey, Key, 'DisplayName', DisplayName) then
     begin
-      if Pos('{#MyAppName}', DisplayName) = 1 then
+      if IsKnownPlanningToICS(DisplayName) then
       begin
         RegQueryStringValue(RootKey, Key, 'DisplayVersion', DisplayVersion);
         RegQueryStringValue(RootKey, Key, 'InstallLocation', InstallLocation);
@@ -106,6 +111,21 @@ begin
       end;
     end;
   end;
+end;
+
+procedure DeleteLegacyShortcuts();
+begin
+  DeleteFile(ExpandConstant('{userprograms}\PDF to ICS.lnk'));
+  DeleteFile(ExpandConstant('{userprograms}\Planning To ICS.lnk'));
+  DeleteFile(ExpandConstant('{userprograms}\Planning to ICS.lnk'));
+  DeleteFile(ExpandConstant('{userprograms}\Planning To ICS\PDF to ICS.lnk'));
+  DeleteFile(ExpandConstant('{userprograms}\Planning To ICS\Planning To ICS.lnk'));
+  DeleteFile(ExpandConstant('{userprograms}\Planning To ICS\Planning to ICS.lnk'));
+  RemoveDir(ExpandConstant('{userprograms}\Planning To ICS'));
+  DeleteFile(ExpandConstant('{autodesktop}\PDF to ICS.lnk'));
+  DeleteFile(ExpandConstant('{autodesktop}\Planning To ICS.lnk'));
+  DeleteFile(ExpandConstant('{userdesktop}\PDF to ICS.lnk'));
+  DeleteFile(ExpandConstant('{userdesktop}\Planning To ICS.lnk'));
 end;
 
 procedure ScanExistingInstalls();
@@ -181,5 +201,8 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if (CurStep = ssInstall) and (InstallMode = 0) and (ExistingCount > 0) then
+  begin
     UninstallExistingInstalls();
+    DeleteLegacyShortcuts();
+  end;
 end;
