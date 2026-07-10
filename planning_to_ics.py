@@ -368,6 +368,77 @@ def week_year_from_path(path: Path) -> tuple[int, int] | None:
     return year, week
 
 
+def read_pdf_header_text(pdf: Path, max_pages: int = 2) -> str:
+    """Read enough of a PDF to identify its planning period."""
+    try:
+        with pdfplumber.open(pdf) as document:
+            texts = []
+            for page in document.pages[:max_pages]:
+                texts.append(page.extract_text(x_tolerance=2, y_tolerance=2) or "")
+    except Exception as exc:
+        raise ValueError(
+            "Le fichier PDF ne peut pas être lu. Il est peut-être endommagé ou protégé."
+        ) from exc
+
+    text = "\n".join(texts).strip()
+    if not text:
+        raise ValueError(
+            "Ce PDF ne contient pas de texte exploitable. Il s'agit peut-être d'un document scanné."
+        )
+    return text
+
+
+def week_year_from_pdf(pdf: Path) -> tuple[int, int] | None:
+    """Detect the ISO planning week from the PDF content, never from file timestamps."""
+    text = read_pdf_header_text(pdf)
+    normalized = normalize_text(text)
+    week_matches = list(
+        re.finditer(r"(?<!\d)(?:semaine|sem|s)[\s._-]*0?(\d{1,2})(?!\d)", normalized)
+    )
+    year_matches = list(re.finditer(r"(?<!\d)(20\d{2})(?!\d)", normalized))
+
+    for week_match in week_matches:
+        week = int(week_match.group(1))
+        if not 1 <= week <= 53:
+            continue
+        nearby_years = sorted(
+            year_matches,
+            key=lambda match: abs(match.start() - week_match.start()),
+        )
+        for year_match in nearby_years:
+            year = int(year_match.group(1))
+            try:
+                date.fromisocalendar(year, week, 1)
+            except ValueError:
+                continue
+            return year, week
+
+    if not year_matches:
+        return None
+
+    # Some exports omit "Semaine NN" but retain the seven dated day headers.
+    header_dates = DAY_HEADER_RE.findall(strip_accents(text))
+    monday_headers = [match for match in header_dates if normalize_text(match[0]).startswith("lun")]
+    if not monday_headers:
+        return None
+
+    monday_day = int(monday_headers[0][1])
+    monday_month = MONTHS_FR.get(normalize_text(monday_headers[0][2].rstrip(".")))
+    if not monday_month:
+        return None
+
+    for year_match in year_matches:
+        iso_year = int(year_match.group(1))
+        for week in range(1, 54):
+            try:
+                monday = date.fromisocalendar(iso_year, week, 1)
+            except ValueError:
+                continue
+            if monday.day == monday_day and monday.month == monday_month:
+                return iso_year, week
+    return None
+
+
 def available_weeks(source_dir: Path, year: int | None = None) -> list[WeekInfo]:
     if not source_dir.exists():
         return []

@@ -12,6 +12,7 @@ import socket
 import subprocess
 import sys
 import threading
+import time as time_module
 import urllib.parse
 import webbrowser
 from datetime import date, datetime, time
@@ -34,13 +35,15 @@ from planning_to_ics import (
     format_summary,
     list_people_for_week,
     output_ics_path,
+    week_year_from_pdf,
     week_year_from_path,
     write_ics_file,
     write_log,
 )
 
-APP_VERSION = "V1.05"
+APP_VERSION = "V1.06"
 SETTINGS_KEYS = {"planning_dir", "output_dir"}
+APP_WINDOW: Any | None = None
 
 
 def settings_path() -> Path:
@@ -102,44 +105,36 @@ def explicit_pdf_from_value(value: str) -> Path | None:
 
 
 @lru_cache(maxsize=32)
+def _cached_people_for_pdf(pdf_path_text: str, modified_ns: int, size: int) -> tuple[str, ...]:
+    del modified_ns, size
+    pdf_path = Path(pdf_path_text)
+    year, week = week_year_for_pdf(pdf_path)
+    return tuple(list_people_for_week(pdf_path.parent, week=week, year=year, explicit_pdf=pdf_path))
+
+
 def cached_people_for_pdf(pdf_path_text: str) -> tuple[str, ...]:
     pdf_path = explicit_pdf_from_value(pdf_path_text)
     if not pdf_path:
         return tuple()
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF introuvable: {pdf_path}")
-    year, week = week_year_for_pdf(pdf_path)
-    return tuple(list_people_for_week(pdf_path.parent, week=week, year=year, explicit_pdf=pdf_path))
+    stat = pdf_path.stat()
+    return _cached_people_for_pdf(str(pdf_path), stat.st_mtime_ns, stat.st_size)
 
 
 def week_year_for_pdf(pdf_path: Path) -> tuple[int, int]:
+    parsed = week_year_from_pdf(pdf_path)
+    if parsed:
+        return parsed
+
     parsed = week_year_from_path(pdf_path)
     if parsed:
         return parsed
 
-    week_match = re.search(r"(?<!\d)(?:semaine|sem|s)[\s._-]*0?(\d{1,2})(?!\d)", str(pdf_path), re.IGNORECASE)
-    if not week_match:
-        raise ValueError(
-            "Impossible de détecter la semaine dans le nom du PDF. "
-            "Le nom doit contenir par exemple SEM30."
-        )
-    week = int(week_match.group(1))
-    if not 1 <= week <= 53:
-        raise ValueError(f"Semaine invalide dans le nom du PDF: {week}")
-
-    year_match = re.search(r"(?<!\d)(20\d{2})(?!\d)", str(pdf_path))
-    if year_match:
-        year = int(year_match.group(1))
-    else:
-        try:
-            year = datetime.fromtimestamp(pdf_path.stat().st_mtime).year
-        except OSError:
-            year = date.today().year
-    try:
-        date.fromisocalendar(year, week, 1)
-    except ValueError as exc:
-        raise ValueError(f"Impossible de calculer la semaine {week} pour l'année {year}.") from exc
-    return year, week
+    raise ValueError(
+        "PDF lisible, mais la semaine et l'année du planning sont introuvables. "
+        "Vérifie qu'il s'agit bien d'un Planning des Techniciens."
+    )
 
 
 def person_options(people: list[str], selected_person: str = "") -> str:
@@ -411,6 +406,21 @@ def page_shell(
       font-size: 12px;
       overflow-wrap: anywhere;
     }}
+    .pdf-status {{
+      min-height: 40px;
+      margin: -8px 0 16px;
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }}
+    .pdf-status.loading {{ border-color: #b9c8dc; color: #3f5f84; }}
+    .pdf-status.compatible {{ border-color: #9bcfbd; color: #174f3f; background: #f1faf7; }}
+    .pdf-status.unsupported, .pdf-status.error {{ border-color: #f0b2ad; color: var(--error); background: #fff7f6; }}
     .import-note {{
       margin: 16px 0 0;
       padding: 11px 13px;
@@ -469,7 +479,7 @@ def page_shell(
         <input id="manual_pdf" name="manual_pdf" type="text" value="{manual_pdf_value}" required>
         <button class="secondary" id="browse_pdf" type="button">Parcourir</button>
       </div>
-      <div class="hint" id="pdf_info"></div>
+      <div class="pdf-status" id="pdf_info" role="status">Choisis un PDF pour vérifier son contenu.</div>
 
       <label for="person">Technicien</label>
       <select id="person" name="person" required>
@@ -548,30 +558,34 @@ def page_shell(
     async function loadPeople() {{
       const pdf = manualPdfInput.value.trim();
       personSelect.innerHTML = '<option value="">Chargement...</option>';
-      pdfInfo.textContent = "";
+      pdfInfo.className = "pdf-status loading";
+      pdfInfo.textContent = "Analyse du PDF en cours...";
       if (!pdf) {{
         personSelect.innerHTML = '<option value="">Choisir...</option>';
+        pdfInfo.className = "pdf-status";
+        pdfInfo.textContent = "Choisis un PDF pour vérifier son contenu.";
         return;
       }}
-      const params = new URLSearchParams({{ pdf }});
-      const response = await fetch(`/api/people?${{params.toString()}}`);
-      const data = await response.json();
-      personSelect.innerHTML = '<option value="">Choisir...</option>';
-      if (data.error) {{
-        pdfInfo.textContent = data.error;
-        return;
-      }}
-      if (data.planning_dir) {{
-        planningDirInput.value = data.planning_dir;
-      }}
-      if (data.week && data.year) {{
-        pdfInfo.textContent = `S${{String(data.week).padStart(2, "0")}} ${{data.year}}`;
-      }}
-      for (const person of data.people) {{
-        const option = document.createElement("option");
-        option.value = person;
-        option.textContent = person;
-        personSelect.appendChild(option);
+      try {{
+        const params = new URLSearchParams({{ pdf }});
+        const response = await fetch(`/api/people?${{params.toString()}}`);
+        const data = await response.json();
+        personSelect.innerHTML = '<option value="">Choisir...</option>';
+        pdfInfo.className = `pdf-status ${{data.status || "error"}}`;
+        pdfInfo.textContent = data.message || data.error || "Impossible d'analyser ce PDF.";
+        if (data.planning_dir) {{
+          planningDirInput.value = data.planning_dir;
+        }}
+        for (const person of data.people || []) {{
+          const option = document.createElement("option");
+          option.value = person;
+          option.textContent = person;
+          personSelect.appendChild(option);
+        }}
+      }} catch (error) {{
+        personSelect.innerHTML = '<option value="">Choisir...</option>';
+        pdfInfo.className = "pdf-status error";
+        pdfInfo.textContent = "L'analyse du PDF a échoué. Réessaie ou choisis un autre fichier.";
       }}
     }}
 
@@ -612,7 +626,8 @@ def page_shell(
       await rememberSettings({{ planning_dir: planningDirInput.value.trim() }});
       manualPdfInput.value = "";
       personSelect.innerHTML = '<option value="">Choisir...</option>';
-      pdfInfo.textContent = "";
+      pdfInfo.className = "pdf-status";
+      pdfInfo.textContent = "Choisis un PDF pour vérifier son contenu.";
       await loadPdfs();
     }});
     outputInput.addEventListener("change", () => rememberSettings({{ output_dir: outputInput.value.trim() }}));
@@ -643,7 +658,7 @@ def render_home() -> bytes:
 def render_shutdown_page() -> bytes:
     content = """
       <h2>Application arrêtée</h2>
-      <p class="empty">Planning to ICS est fermé. Tu peux fermer cet onglet du navigateur.</p>
+      <p class="empty">Planning to ICS va maintenant fermer cette fenêtre.</p>
       <script>
         window.addEventListener('load', () => {
           setTimeout(() => {
@@ -820,6 +835,38 @@ def export_result(result: ExtractionResult, output_dir: Path) -> Path:
     return ics_path
 
 
+def open_export_target(ics_path: Path, show_folder: bool) -> Path:
+    if not ics_path.is_file() or ics_path.suffix.lower() != ".ics":
+        raise FileNotFoundError(f"Fichier ICS introuvable: {ics_path}")
+    target = ics_path.parent if show_folder else ics_path
+    if os.name == "nt":
+        os.startfile(str(target))  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(target)])
+    else:
+        subprocess.Popen(["xdg-open", str(target)])
+    return target
+
+
+def export_actions_html(ics_path: Path, fields: dict[str, str]) -> str:
+    hidden = [
+        hidden_input("export_path", str(ics_path)),
+        hidden_input("manual_pdf", fields.get("manual_pdf", "")),
+        hidden_input("planning_dir", fields.get("planning_dir", "")),
+        hidden_input("person", fields.get("person", "")),
+        hidden_input("output_dir", fields.get("output_dir", "")),
+    ]
+    return f"""
+      <form method="post">
+        {''.join(hidden)}
+        <div class="actions">
+          <button type="submit" name="action" value="open_ics">Ouvrir l'ICS</button>
+          <button class="secondary" type="submit" name="action" value="open_folder">Afficher dans le dossier</button>
+        </div>
+      </form>
+    """
+
+
 def run_generation(fields: dict[str, str]) -> bytes:
     selected_person = fields.get("person", "")
     manual_pdf = fields.get("manual_pdf", "")
@@ -828,6 +875,27 @@ def run_generation(fields: dict[str, str]) -> bytes:
     output_dir_text = fields.get("output_dir", "") or settings["output_dir"]
     action = fields.get("action") or "generate"
     try:
+        if action in {"open_ics", "open_folder"}:
+            ics_path = Path(fields.get("export_path", ""))
+            target = open_export_target(ics_path, show_folder=action == "open_folder")
+            people: list[str] = []
+            explicit_pdf = explicit_pdf_from_value(manual_pdf)
+            if explicit_pdf and explicit_pdf.exists():
+                people = list(cached_people_for_pdf(str(explicit_pdf)))
+            label = "Dossier ouvert" if action == "open_folder" else "Fichier ICS ouvert"
+            content = f"""
+              <p class="ok">{label} : <code>{html.escape(str(target))}</code></p>
+              <p class="import-note">Dans Outlook, vérifie le calendrier de destination puis confirme l'ajout.</p>
+            """
+            return page_shell(
+                content,
+                people=people,
+                selected_person=selected_person,
+                manual_pdf=manual_pdf,
+                planning_dir=planning_dir_text,
+                output_dir=output_dir_text,
+            )
+
         explicit_pdf = chosen_pdf(fields)
         year, week = week_year_for_pdf(explicit_pdf)
         planning_dir_text = str(explicit_pdf.parent)
@@ -845,6 +913,7 @@ def run_generation(fields: dict[str, str]) -> bytes:
             content = f"""
               <p class="ok">ICS modifié généré : <code>{html.escape(str(ics_path))}</code></p>
               <p class="import-note">Dernière étape : importe ce fichier ICS dans ton agenda. Le fichier est prêt, mais il n'est pas ajouté automatiquement dans Outlook ou Google Agenda.</p>
+              {export_actions_html(ics_path, fields)}
               <h2>Résumé exporté</h2>
               <pre>{summary_html}</pre>
             """
@@ -879,6 +948,7 @@ def run_generation(fields: dict[str, str]) -> bytes:
         content = f"""
           <p class="ok">ICS généré : <code>{html.escape(str(ics_path))}</code></p>
           <p class="import-note">Dernière étape : importe ce fichier ICS dans ton agenda. Le fichier est prêt, mais il n'est pas ajouté automatiquement dans Outlook ou Google Agenda.</p>
+          {export_actions_html(ics_path, fields)}
           <h2>Résumé</h2>
           <pre>{summary_html}</pre>
         """
@@ -920,21 +990,42 @@ def render_people_api(query: str) -> bytes:
     try:
         pdf_path = explicit_pdf_from_value(pdf)
         if not pdf_path:
-            payload = {"people": []}
+            payload = {
+                "people": [],
+                "status": "idle",
+                "message": "Choisis un PDF pour vérifier son contenu.",
+            }
         elif not pdf_path.exists():
             raise FileNotFoundError(f"PDF introuvable: {pdf_path}")
         else:
             year, week = week_year_for_pdf(pdf_path)
             planning_dir = str(pdf_path.parent)
             save_settings({"planning_dir": planning_dir})
+            people = list(cached_people_for_pdf(str(pdf_path)))
+            if people:
+                status = "compatible"
+                message = (
+                    f"Planning compatible - S{week:02d} {year} - "
+                    f"{len(people)} technicien{'s' if len(people) > 1 else ''} trouvé{'s' if len(people) > 1 else ''}."
+                )
+            else:
+                status = "unsupported"
+                message = (
+                    f"PDF lisible et semaine S{week:02d} {year} reconnue, "
+                    "mais aucun technicien n'a été trouvé. Ce format de planning n'est pas pris en charge."
+                )
             payload = {
-                "people": list(cached_people_for_pdf(str(pdf_path))),
+                "people": people,
                 "year": year,
                 "week": week,
                 "planning_dir": planning_dir,
+                "status": status,
+                "message": message,
             }
     except Exception as exc:
-        payload = {"people": [], "error": str(exc)}
+        message = str(exc)
+        status = "unsupported" if "PDF lisible" in message or "scanné" in message else "error"
+        payload = {"people": [], "status": status, "message": message, "error": message}
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
 
@@ -1128,7 +1219,18 @@ class PlanningHandler(BaseHTTPRequestHandler):
             super().finish()
         finally:
             if getattr(self, "_shutdown_after_response", False):
-                threading.Thread(target=self.server.shutdown, daemon=True).start()
+                server = self.server
+
+                def stop_application() -> None:
+                    time_module.sleep(0.15)
+                    server.shutdown()
+                    if APP_WINDOW is not None:
+                        try:
+                            APP_WINDOW.destroy()
+                        except Exception:
+                            pass
+
+                threading.Thread(target=stop_application, daemon=True).start()
 
     def log_message(self, format: str, *args: Any) -> None:
         return
@@ -1137,25 +1239,58 @@ class PlanningHandler(BaseHTTPRequestHandler):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Lance l'interface locale Planning to ICS.")
     parser.add_argument("--port", type=int, default=8766)
-    parser.add_argument("--no-browser", action="store_true")
+    parser.add_argument("--browser", action="store_true", help="Ouvre l'interface dans le navigateur.")
+    parser.add_argument("--no-browser", action="store_true", help=argparse.SUPPRESS)
     return parser.parse_args()
 
 
 def main() -> int:
+    global APP_WINDOW
     args = parse_args()
     port = find_free_port(args.port)
     server = ThreadingHTTPServer(("127.0.0.1", port), PlanningHandler)
     url = f"http://127.0.0.1:{port}/"
 
-    if not args.no_browser:
-        threading.Timer(0.5, lambda: webbrowser.open(url)).start()
-
     print(f"Interface Planning to ICS: {url}")
-    print("Utilise le bouton Quitter l'application dans l'interface pour arrêter le serveur local.")
+    if args.no_browser:
+        try:
+            server.serve_forever()
+        finally:
+            server.server_close()
+        return 0
+
+    if args.browser:
+        threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+        try:
+            server.serve_forever()
+        finally:
+            server.server_close()
+        return 0
+
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
     try:
-        server.serve_forever()
+        try:
+            import webview
+
+            APP_WINDOW = webview.create_window(
+                "Planning to ICS",
+                url,
+                width=1280,
+                height=820,
+                min_size=(860, 620),
+                background_color="#ffffff",
+            )
+            webview.start(gui="edgechromium", debug=False)
+        except Exception:
+            APP_WINDOW = None
+            webbrowser.open(url)
+            server_thread.join()
     finally:
+        server.shutdown()
+        server_thread.join(timeout=5)
         server.server_close()
+        APP_WINDOW = None
     return 0
 
 
