@@ -5,6 +5,7 @@ dist/
 _internal/
 tmp/
 installer-output/*.exe
+*.spec.bak
 
 Planning To ICS.exe
 Planning to ICS.exe
@@ -12,8 +13,10 @@ Planning to ICS.exe
 *.pyc
 *.pyo
 *.log
+*.tmp
 *.ics
 *.zip
+Planning_agent_log.txt
 
 .venv/
 venv/
