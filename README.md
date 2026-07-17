@@ -6,19 +6,21 @@ Signature interface : `by Mamat et ses agents`.
 
 ## Origine du projet
 
-Planning to ICS est l'aboutissement d'un projet commencé il y a plusieurs années. Les premières versions reposaient sur des scripts manuels, de l'OCR et des traitements de fichiers difficiles à maintenir et à transmettre.
+Le projet a commencé avec des scripts manuels, de l'OCR et des traitements de fichiers. Des agents IA ont ensuite contribué à moderniser le code, améliorer l'extraction des PDF, gérer les accents et préparer l'application Windows.
 
-L'arrivée d'agents IA modernes a permis de franchir un cap important : structurer le code, fiabiliser l'extraction PDF, gérer les accents, tester les cas particuliers, créer une véritable interface Windows et préparer un installateur partageable.
+La mention `et ses agents` dans la signature indique simplement que des agents IA ont participé à l'évolution, aux tests et à la documentation du projet.
 
-Cette signature reflète volontairement cette histoire : Mamat porte le projet, et des agents IA ont largement contribué à sa conception, son évolution, ses tests et sa documentation.
+## Télécharger et installer
 
-## Installation sur un autre PC
+Le téléchargement le plus simple est ici : [Télécharger l'installateur Windows V1.07](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.07/Planning_to_ICS_V1.07_Setup.exe).
 
-Télécharger l'installateur depuis la page [Releases GitHub](https://github.com/Mamat79/Planning-To-ICS/releases) :
+Si le téléchargement direct ne démarre pas :
 
-```text
-Planning_to_ICS_V1.07_Setup.exe
-```
+1. Ouvrir la [page des Releases GitHub](https://github.com/Mamat79/Planning-To-ICS/releases).
+2. Cliquer sur `v1.07` dans la liste.
+3. Descendre jusqu'à la rubrique **Assets**.
+4. Cliquer sur `Planning_to_ICS_V1.07_Setup.exe`.
+5. Ouvrir le fichier téléchargé pour lancer l'installation.
 
 L'installateur contient l'application compilée et ses dépendances. Python n'est pas nécessaire sur le PC cible.
 
