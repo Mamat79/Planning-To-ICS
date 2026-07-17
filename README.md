@@ -2,7 +2,6 @@
 
 Application locale pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
 
-Signature interface : `by Mamat et ses agents`.
 
 ## Origine du projet
 
