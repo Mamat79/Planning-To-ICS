@@ -251,9 +251,19 @@ def page_shell(
     }}
     .signature {{
       color: var(--muted);
-      font-size: 13px;
       font-style: italic;
       white-space: nowrap;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      line-height: 1.05;
+    }}
+    .signature-main {{
+      font-size: 13px;
+    }}
+    .signature-agents {{
+      font-size: 10px;
+      margin-top: 2px;
     }}
     main {{
       display: grid;
@@ -459,7 +469,7 @@ def page_shell(
 <body>
   <header>
     <h1>Planning to ICS <span class="version">{APP_VERSION}</span></h1>
-    <div class="signature">by Mamat et ses agents</div>
+    <div class="signature"><span class="signature-main">by Mamat</span><span class="signature-agents">et ses agents</span></div>
   </header>
   <main>
     <form method="post">
