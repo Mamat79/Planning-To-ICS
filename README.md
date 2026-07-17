@@ -8,8 +8,6 @@ Signature interface : `by Mamat et ses agents`.
 
 Le projet a commencé avec des scripts manuels, de l'OCR et des traitements de fichiers. Des agents IA ont ensuite contribué à moderniser le code, améliorer l'extraction des PDF, gérer les accents et préparer l'application Windows.
 
-La mention `et ses agents` dans la signature indique simplement que des agents IA ont participé à l'évolution, aux tests et à la documentation du projet.
-
 ## Télécharger et installer
 
 Le téléchargement le plus simple est ici : [Télécharger l'installateur Windows V1.07](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.07/Planning_to_ICS_V1.07_Setup.exe).
