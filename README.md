@@ -63,10 +63,10 @@ L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visibl
 
 ## Développement
 
-Le projet source est ici :
+Le code source est disponible dans ce dépôt GitHub :
 
 ```text
-D:\IA\Projets\Codex\Applis Persos\Planning To ICS
+https://github.com/Mamat79/Planning-To-ICS
 ```
 
 Installation des dépendances de développement :

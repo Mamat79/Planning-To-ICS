@@ -23,11 +23,9 @@ except ImportError as exc:  # pragma: no cover - exercised by users without deps
     ) from exc
 
 
-SOURCE_DIR = Path(
-    r"D:\Cloud\Radio France\Direction de la Production et des Antennes - Documents Communs\Planning"
-)
-OUTPUT_DIR = Path(r"D:\Cloud\OneDrive - Radio France\Radio-France\02 - Plannings")
-DEFAULT_PERSON = "Matthieu Leroy"
+SOURCE_DIR = Path.home() / "Documents" / "Planning To ICS" / "Plannings"
+OUTPUT_DIR = Path.home() / "Documents" / "Planning To ICS" / "Exports"
+DEFAULT_PERSON = ""
 DEFAULT_TIMEZONE = "Europe/Paris"
 ICS_FILE_ENCODING = "utf-8"
 ICS_FILE_BOM = b""
@@ -286,7 +284,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         nargs="*",
         help='Phrase libre, par exemple: "Leroy Matthieu semaine 27".',
     )
-    parser.add_argument("--person", help="Personne à traiter. Par défaut: Matthieu Leroy.")
+    parser.add_argument("--person", help="Technicien à traiter. Obligatoire en mode CLI.")
     parser.add_argument("--week", type=int, help="Numéro de semaine ISO.")
     parser.add_argument("--year", type=int, help="Année ISO. Par défaut: année courante.")
     parser.add_argument("--source", type=Path, default=SOURCE_DIR, help="Dossier source des PDF.")
