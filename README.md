@@ -1,4 +1,4 @@
-# Planning to ICS V1.06
+# Planning to ICS V1.07
 
 Application locale pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
 
@@ -9,7 +9,7 @@ Signature interface : `by Mamat`.
 Télécharger l'installateur depuis la page [Releases GitHub](https://github.com/Mamat79/Planning-To-ICS/releases) :
 
 ```text
-Planning_to_ICS_V1.06_Setup.exe
+Planning_to_ICS_V1.07_Setup.exe
 ```
 
 L'installateur contient l'application compilée et ses dépendances. Python n'est pas nécessaire sur le PC cible.
@@ -58,7 +58,7 @@ L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visibl
 - Si une fin est inférieure au début, l'événement finit le lendemain.
 - Les titres Outlook retirent le nom du technicien quand il est répété au début de la mission.
 - La semaine et l'année sont lues en priorité dans le contenu du PDF, sans utiliser sa date de copie.
-- L'ICS est écrit en UTF-8 avec des dates UTC compatibles Outlook et la zone `Europe/Paris` en métadonnée.
+- L'ICS est écrit en UTF-8 standard sans BOM, avec des dates UTC compatibles Outlook et la zone `Europe/Paris` en métadonnée.
 - Les PDF source ne sont jamais modifiés.
 
 ## Développement

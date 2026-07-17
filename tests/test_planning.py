@@ -68,7 +68,8 @@ def test_ics_is_outlook_compatible_and_keeps_accents(planning_pdf: Path, tmp_pat
     raw = output.read_bytes()
     text = raw.decode("utf-8-sig")
 
-    assert raw.startswith(b"\xef\xbb\xbf")
+    assert not raw.startswith(b"\xef\xbb\xbf")
+    assert raw.startswith(b"BEGIN:VCALENDAR")
     assert "SUMMARY:Hôtel Étoilé" in text
     assert "\r\n" in text
     assert all(len(line.encode("utf-8")) <= 75 for line in build_ics(result).splitlines())

@@ -30,7 +30,7 @@ OUTPUT_DIR = Path(r"D:\Cloud\OneDrive - Radio France\Radio-France\02 - Plannings
 DEFAULT_PERSON = "Matthieu Leroy"
 DEFAULT_TIMEZONE = "Europe/Paris"
 ICS_FILE_ENCODING = "utf-8"
-ICS_FILE_BOM = b"\xef\xbb\xbf"
+ICS_FILE_BOM = b""
 
 MONTHS_FR = {
     "janvier": 1,
