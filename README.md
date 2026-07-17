@@ -48,6 +48,10 @@ Après `Prévisualiser`, les événements extraits apparaissent dans un tableau 
 
 Une fois le fichier `.ics` généré, il faut l'importer dans l'agenda voulu. L'application crée le fichier ICS, mais elle ne l'ajoute pas automatiquement dans Outlook, Google Agenda ou un autre calendrier.
 
+## Tutoriel vidéo
+
+Vidéo silencieuse avec sous-titres : [télécharger le tutoriel V1.07](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.07/Planning_to_ICS_V1.07_Tutoriel.mp4).
+
 L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visible. Fermer la fenêtre arrête complètement l'application.
 
 ## Règles appliquées
