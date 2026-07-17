@@ -2,7 +2,15 @@
 
 Application locale pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
 
-Signature interface : `by Mamat`.
+Signature interface : `by Mamat et ses agents`.
+
+## Origine du projet
+
+Planning to ICS est l'aboutissement d'un projet commencé il y a plusieurs années. Les premières versions reposaient sur des scripts manuels, de l'OCR et des traitements de fichiers difficiles à maintenir et à transmettre.
+
+L'arrivée d'agents IA modernes a permis de franchir un cap important : structurer le code, fiabiliser l'extraction PDF, gérer les accents, tester les cas particuliers, créer une véritable interface Windows et préparer un installateur partageable.
+
+Cette signature reflète volontairement cette histoire : Mamat porte le projet, et des agents IA ont largement contribué à sa conception, son évolution, ses tests et sa documentation.
 
 ## Installation sur un autre PC
 

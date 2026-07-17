@@ -459,7 +459,7 @@ def page_shell(
 <body>
   <header>
     <h1>Planning to ICS <span class="version">{APP_VERSION}</span></h1>
-    <div class="signature">by Mamat</div>
+    <div class="signature">by Mamat et ses agents</div>
   </header>
   <main>
     <form method="post">

@@ -12,14 +12,15 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 WIDTH, HEIGHT = 1920, 1080
-NAVY = "#082b52"
+NAVY = "#102a43"
 BLUE = "#0f5aa6"
-TEAL = "#0b766b"
-PALE = "#f4f7fa"
-INK = "#1c2d3f"
-MUTED = "#607286"
-GREEN = "#dff4e7"
-LINE = "#d4dee8"
+TEAL = "#146c5f"
+PALE = "#ffffff"
+INK = "#202124"
+MUTED = "#62676f"
+GREEN = "#f1faf7"
+LINE = "#d9dde3"
+SOFT = "#f6f7f9"
 
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -36,48 +37,82 @@ def panel(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], fill="white
 
 
 def button(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], label: str, fill=TEAL, light=False) -> None:
-    draw.rounded_rectangle(box, radius=8, fill=fill, outline=fill)
-    text(draw, ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), label, 24, fill=(TEAL if light else "white"), bold=True, anchor="mm")
+    draw.rounded_rectangle(box, radius=6, fill=fill, outline=(TEAL if light else fill), width=1)
+    text(draw, ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), label, 18, fill=(TEAL if light else "white"), bold=True, anchor="mm")
 
 
 def base_slide(title: str, step: str) -> tuple[Image.Image, ImageDraw.ImageDraw]:
     image = Image.new("RGB", (WIDTH, HEIGHT), PALE)
     draw = ImageDraw.Draw(image)
-    draw.rectangle((0, 0, WIDTH, 92), fill=NAVY)
-    text(draw, (70, 44), "Planning to ICS", 34, "white", True, "lm")
-    text(draw, (WIDTH - 70, 44), step, 25, "#c9d8e8", False, "rm")
-    text(draw, (80, 150), title, 46, NAVY, True)
+    draw.rectangle((0, 0, WIDTH, 92), fill="#fbfbfc")
+    draw.line((0, 91, WIDTH, 91), fill=LINE, width=2)
+    text(draw, (48, 44), "Planning To ICS", 31, NAVY, True, "lm")
+    text(draw, (300, 44), "V1.07", 16, TEAL, False, "lm")
+    text(draw, (WIDTH - 48, 44), "by Mamat et ses agents", 17, MUTED, False, "rm")
+    text(draw, (WIDTH - 48, 77), step, 14, MUTED, False, "rm")
+    draw.rectangle((0, 92, 430, 930), fill=SOFT)
+    draw.line((429, 92, 429, 930), fill=LINE, width=2)
+    if title:
+        text(draw, (470, 126), title, 27, NAVY, True)
     return image, draw
 
 
 def subtitle(draw: ImageDraw.ImageDraw, value: str) -> None:
-    draw.rectangle((0, 930, WIDTH, HEIGHT), fill=NAVY)
-    draw.rectangle((80, 962, 92, 1020), fill="#60c7b5")
-    draw.multiline_text((125, 955), value, font=font(28), fill="white", spacing=5)
+    draw.rectangle((0, 930, WIDTH, HEIGHT), fill="#102a43")
+    draw.rectangle((48, 958, 58, 1030), fill="#65c6b4")
+    draw.multiline_text((88, 950), value, font=font(25), fill="white", spacing=5)
 
 
-def draw_app_shell(draw: ImageDraw.ImageDraw) -> None:
-    panel(draw, (80, 225, 500, 875), fill="#f8fafc")
-    text(draw, (120, 270), "Planning To ICS", 28, NAVY, True)
-    text(draw, (120, 325), "Dossier des plannings", 20, MUTED)
-    panel(draw, (120, 350, 460, 408), fill="white")
-    text(draw, (145, 379), "D:\\Plannings", 22, INK, False, "lm")
-    button(draw, (120, 445, 280, 500), "Parcourir", BLUE)
-    text(draw, (120, 560), "PDF de planning", 20, MUTED)
-    panel(draw, (120, 585, 460, 645), fill="white")
-    text(draw, (145, 615), "planning-exemple-semaine.pdf", 19, INK, False, "lm")
-    text(draw, (120, 710), "Technicien", 20, MUTED)
-    panel(draw, (120, 735, 460, 795), fill="white")
-    text(draw, (145, 765), "Choisir dans le PDF", 19, INK, False, "lm")
+def field(draw: ImageDraw.ImageDraw, y: int, label: str, value: str, button_label: str | None = None) -> None:
+    text(draw, (24, y), label, 16, MUTED)
+    panel(draw, (24, y + 20, 305 if button_label else 405, y + 62), fill="white", radius=6)
+    text(draw, (40, y + 41), value, 16, INK, False, "lm")
+    if button_label:
+        button(draw, (314, y + 20, 405, y + 62), button_label, "white", light=True)
+
+
+def draw_app_shell(draw: ImageDraw.ImageDraw, pdf: str = "planning-exemple-semaine.pdf", person: str = "Technicien 1", selected: bool = True) -> None:
+    field(draw, 128, "Dossier des plannings", r"D:\Plannings", "Parcourir")
+    text(draw, (24, 238), "PDF trouvés dans ce dossier", 16, MUTED)
+    panel(draw, (24, 258, 405, 302), fill="white", radius=6)
+    text(draw, (40, 280), pdf, 16, INK, False, "lm")
+    text(draw, (40, 294), "Semaine 30 - 2026", 13, MUTED, False, "lm")
+    field(draw, 330, "PDF de planning", "D:\\Plannings\\" + pdf, "Parcourir")
+    text(draw, (24, 440), "Technicien", 16, MUTED)
+    panel(draw, (24, 460, 405, 502), fill="white", radius=6)
+    text(draw, (40, 481), person, 16, INK, False, "lm")
+    text(draw, (385, 481), "⌄", 18, MUTED, False, "mm")
+    field(draw, 530, "Exporter vers", r"D:\Exports", "Parcourir")
+    button(draw, (24, 635, 145, 680), "Générer ICS", TEAL)
+    button(draw, (155, 635, 280, 680), "Prévisualiser", "white", light=True)
+    text(draw, (24, 730), "Le dernier dossier choisi est mémorisé.", 14, MUTED)
+
+
+def draw_summary(draw: ImageDraw.ImageDraw, status: str = "ICS généré : D:\\Exports\\Planning_Technicien_S30_2026.ics", title: str = "Résumé") -> None:
+    panel(draw, (470, 158, 1880, 208), fill="white", outline="#9bcfbd", radius=6)
+    text(draw, (495, 183), status, 16, "#174f3f", False, "lm")
+    text(draw, (470, 255), title, 25, NAVY, True)
+    panel(draw, (470, 282, 1880, 845), fill="white", outline=LINE, radius=6)
+    rows = [
+        "Lun 20/07 : 09:00-18:00 Mission exemple (-1h)",
+        "Mar 21/07 : 09:00-17:00 Préparation Paris",
+        "Mer 22/07 : 21:00-01:00 Projet nuit",
+        "Jeu 23/07 : 08:00-12:00 Mission exemple",
+        "",
+        "Alertes :",
+        "- pause de 01:00 détectée et conservée dans le titre",
+    ]
+    draw.multiline_text((495, 320), "\n".join(rows), font=font(17), fill=INK, spacing=8)
 
 
 def slide_cover() -> Image.Image:
     image, draw = base_slide("Générer un planning Outlook en quelques clics", "Tutoriel V1.07")
-    panel(draw, (220, 265, 1700, 790), fill="white", outline="#cbd8e5", radius=18)
-    draw.rectangle((220, 265, 1700, 350), fill="#e8f3f1")
-    text(draw, (300, 420), "PDF  →  ICS  →  Outlook", 70, NAVY, True)
-    text(draw, (300, 540), "Une vidéo courte, sans audio, avec sous-titres.", 32, MUTED)
-    button(draw, (300, 635, 650, 705), "Planning to ICS", TEAL)
+    draw_app_shell(draw)
+    draw_summary(draw, "Prêt à traiter : planning-exemple-semaine.pdf")
+    panel(draw, (735, 355, 1600, 690), fill="#f1faf7", outline="#9bcfbd", radius=6)
+    text(draw, (790, 420), "PDF  →  ICS  →  Outlook", 54, NAVY, True)
+    text(draw, (790, 525), "Une vidéo silencieuse avec sous-titres.", 25, MUTED)
+    button(draw, (790, 590, 1010, 642), "Démarrer", TEAL)
     subtitle(draw, "Dans cette vidéo : choisir le PDF, sélectionner le technicien,\nprévisualiser, générer l’ICS et l’importer dans Outlook.")
     return image
 
@@ -85,108 +120,115 @@ def slide_cover() -> Image.Image:
 def slide_open() -> Image.Image:
     image, draw = base_slide("Ouvrir l’application", "1 / 6")
     draw_app_shell(draw)
-    panel(draw, (590, 225, 1800, 875), fill="white")
-    text(draw, (660, 285), "Planning to ICS", 34, NAVY, True)
-    text(draw, (660, 350), "L’interface se souvient des derniers dossiers utilisés.", 27, MUTED)
-    panel(draw, (660, 430, 1640, 570), fill="#eef7f5", outline="#b7ddd5")
-    text(draw, (730, 475), "1", 42, TEAL, True)
-    text(draw, (810, 478), "Dossier des plannings", 28, INK, True)
-    text(draw, (810, 525), "Le dossier choisi reste mémorisé au prochain lancement.", 22, MUTED)
+    draw_summary(draw, "Dossier mémorisé : D:\\Plannings", "Résumé")
+    panel(draw, (730, 360, 1635, 590), fill="#f1faf7", outline="#9bcfbd", radius=6)
+    text(draw, (780, 420), "Dossier des plannings", 25, INK, True)
+    text(draw, (780, 472), "Le dernier emplacement choisi est retrouvé au prochain lancement.", 21, MUTED)
     subtitle(draw, "Lance Planning to ICS depuis le menu Démarrer ou le raccourci.\nLe dernier dossier utilisé est retrouvé automatiquement.")
     return image
 
 
 def slide_pdf() -> Image.Image:
     image, draw = base_slide("Choisir le PDF à traiter", "2 / 6")
-    draw_app_shell(draw)
-    panel(draw, (590, 225, 1800, 875), fill="white")
-    text(draw, (660, 285), "PDF trouvés dans ce dossier", 30, NAVY, True)
+    draw_app_shell(draw, "planning-exemple-semaine.pdf")
+    panel(draw, (470, 158, 1880, 845), fill="white", outline=LINE, radius=6)
+    text(draw, (500, 205), "PDF trouvés dans ce dossier", 25, NAVY, True)
+    text(draw, (500, 245), r"D:\Plannings", 16, MUTED)
     rows = ["planning-exemple-semaine.pdf", "planning-semaine-31.pdf", "planning-semaine-32.pdf"]
     for index, value in enumerate(rows):
-        y = 360 + index * 90
-        panel(draw, (660, y, 1660, y + 62), fill=("#e2f4f0" if index == 0 else "white"), outline=(TEAL if index == 0 else LINE))
-        text(draw, (700, y + 31), value, 23, INK, index == 0, "lm")
-        text(draw, (1580, y + 31), "Sélectionné" if index == 0 else "", 18, TEAL, False, "rm")
-    button(draw, (660, 690, 900, 750), "Parcourir", BLUE)
+        y = 300 + index * 76
+        panel(draw, (500, y, 1835, y + 54), fill=("#f1faf7" if index == 0 else "white"), outline=(TEAL if index == 0 else LINE), radius=6)
+        text(draw, (530, y + 27), value, 17, INK, index == 0, "lm")
+        text(draw, (1780, y + 27), "Sélectionné" if index == 0 else "", 15, TEAL, False, "rm")
+    button(draw, (500, 565, 635, 610), "Parcourir", "white", light=True)
     subtitle(draw, "Sélectionne le PDF voulu dans la liste.\nLe fichier est demandé à chaque nouvelle génération.")
     return image
 
 
 def slide_person() -> Image.Image:
     image, draw = base_slide("Sélectionner le technicien", "3 / 6")
-    draw_app_shell(draw)
-    panel(draw, (590, 225, 1800, 875), fill="white")
-    text(draw, (660, 285), "Techniciens détectés dans le PDF", 30, NAVY, True)
-    panel(draw, (660, 350, 1660, 415), fill="#f8fafc")
-    text(draw, (700, 382), "Rechercher un nom…", 22, MUTED, False, "lm")
+    draw_app_shell(draw, person="Technicien 1")
+    panel(draw, (470, 158, 1880, 845), fill="white", outline=LINE, radius=6)
+    text(draw, (500, 205), "Techniciens détectés dans le PDF", 25, NAVY, True)
+    panel(draw, (500, 245, 1835, 297), fill=SOFT, radius=6)
+    text(draw, (530, 271), "Rechercher un nom…", 17, MUTED, False, "lm")
     for index, value in enumerate(["Technicien 1", "Technicien 2", "Technicien 3"]):
-        y = 465 + index * 86
-        panel(draw, (660, y, 1660, y + 58), fill=("#e2f4f0" if index == 0 else "white"), outline=(TEAL if index == 0 else LINE))
-        text(draw, (705, y + 29), value, 23, INK, index == 0, "lm")
-        text(draw, (1580, y + 29), "✓" if index == 0 else "", 28, TEAL, True, "rm")
+        y = 330 + index * 76
+        panel(draw, (500, y, 1835, y + 54), fill=("#f1faf7" if index == 0 else "white"), outline=(TEAL if index == 0 else LINE), radius=6)
+        text(draw, (530, y + 27), value, 17, INK, index == 0, "lm")
+        text(draw, (1780, y + 27), "✓" if index == 0 else "", 22, TEAL, True, "rm")
     subtitle(draw, "Choisis le technicien à exporter.\nLes dates sont lues dans le PDF sélectionné.")
     return image
 
 
 def slide_preview() -> Image.Image:
     image, draw = base_slide("Prévisualiser et corriger", "4 / 6")
-    panel(draw, (100, 230, 1810, 875), fill="white")
-    text(draw, (155, 285), "Prévisualisation des événements", 30, NAVY, True)
-    headers = [(155, "Jour"), (330, "Début"), (555, "Fin"), (770, "Titre"), (1480, "Description")]
+    draw_app_shell(draw)
+    panel(draw, (470, 158, 1880, 845), fill="white", outline=LINE, radius=6)
+    text(draw, (500, 205), "Prévisualisation des événements", 25, NAVY, True)
+    headers = [(500, "Jour"), (685, "Début"), (815, "Fin"), (970, "Titre"), (1450, "Description")]
     for x, value in headers:
-        text(draw, (x, 350), value, 20, MUTED, True)
+        text(draw, (x, 255), value, 15, MUTED, True)
     rows = [
         ("Lun 20/07", "09:00", "18:00", "Mission exemple (-1h)", "Pause affichée dans le titre"),
         ("Mar 21/07", "09:00", "17:00", "Préparation Paris", "Mission et lieu"),
         ("Mer 22/07", "21:00", "01:00", "Projet nuit", "Fin le lendemain"),
     ]
     for index, row in enumerate(rows):
-        y = 405 + index * 105
-        draw.line((145, y - 20, 1740, y - 20), fill=LINE, width=2)
-        for x, value in zip((155, 330, 555, 770, 1480), row):
-            text(draw, (x, y), value, 20, INK, x == 770, "lm")
-    button(draw, (150, 750, 430, 815), "Générer ICS", TEAL)
-    button(draw, (460, 750, 650, 815), "Modifier", BLUE)
+        y = 310 + index * 95
+        draw.line((490, y - 22, 1840, y - 22), fill=LINE, width=2)
+        for x, value in zip((500, 685, 815, 970, 1450), row):
+            text(draw, (x, y), value, 16, INK, x == 970, "lm")
+    button(draw, (500, 665, 635, 710), "Modifier", "white", light=True)
+    button(draw, (645, 665, 780, 710), "Générer ICS", TEAL)
     subtitle(draw, "Vérifie les événements, puis modifie si nécessaire le titre,\nles horaires ou la description avant de générer.")
     return image
 
 
 def slide_export() -> Image.Image:
     image, draw = base_slide("Générer le fichier ICS", "5 / 6")
-    panel(draw, (180, 255, 1740, 790), fill="white")
-    text(draw, (270, 330), "Dossier d’export", 24, MUTED)
-    panel(draw, (270, 370, 1320, 430), fill="#f8fafc")
-    text(draw, (310, 400), "D:\\Exports", 25, INK, False, "lm")
-    button(draw, (1380, 370, 1600, 430), "Parcourir", BLUE)
-    button(draw, (270, 525, 620, 600), "Générer ICS", TEAL)
-    panel(draw, (270, 650, 1600, 735), fill=GREEN, outline="#a9d7b8")
-    text(draw, (315, 693), "ICS généré : Planning_Technicien_S30_2026.ics", 23, "#1d6540", True, "lm")
+    draw_app_shell(draw)
+    draw_summary(draw, "ICS généré : D:\\Exports\\Planning_Technicien_S30_2026.ics")
+    panel(draw, (720, 365, 1605, 620), fill=GREEN, outline="#9bcfbd", radius=6)
+    text(draw, (770, 430), "Le fichier est prêt à être importé", 27, NAVY, True)
+    text(draw, (770, 495), "Planning_Technicien_S30_2026.ics", 21, "#174f3f", True)
+    text(draw, (770, 550), "Ouvre-le pour l’ajouter à ton agenda.", 20, MUTED)
     subtitle(draw, "Clique sur Générer ICS. Le fichier est écrit en UTF-8\net peut ensuite être ouvert dans Outlook.")
     return image
 
 
 def slide_outlook() -> Image.Image:
     image, draw = base_slide("Importer dans Outlook", "6 / 6")
-    panel(draw, (130, 230, 1790, 865), fill="white")
-    draw.rectangle((130, 230, 1790, 320), fill=NAVY)
-    text(draw, (190, 275), "Outlook", 31, "white", True, "lm")
-    panel(draw, (210, 365, 1690, 490), fill="#f4f7fb")
-    text(draw, (270, 425), "Planning_Technicien_S30_2026.ics", 27, INK, True, "lm")
-    button(draw, (270, 555, 650, 625), "Ajouter au calendrier", BLUE)
-    panel(draw, (810, 535, 1580, 735), fill="#eef7f5", outline="#b7ddd5")
-    text(draw, (870, 585), "Calendrier sélectionné", 22, MUTED)
-    text(draw, (870, 635), "Prévisionnel RF", 30, NAVY, True)
-    text(draw, (870, 690), "Vérifie l’agenda puis confirme l’ajout.", 21, INK)
+    draw.rectangle((430, 92, WIDTH, 155), fill="#062551")
+    text(draw, (470, 123), "Outlook", 25, "white", True, "lm")
+    text(draw, (700, 123), "Calendrier", 17, "#d8e3ef", False, "lm")
+    panel(draw, (470, 190, 1880, 845), fill="white", outline=LINE, radius=6)
+    panel(draw, (500, 225, 1835, 280), fill=SOFT, radius=5)
+    text(draw, (530, 252), "Planning_Technicien_S30_2026.ics", 17, INK, True, "lm")
+    button(draw, (500, 315, 735, 362), "Ajouter au calendrier", "#123b76")
+    panel(draw, (500, 405, 1250, 760), fill="white", outline=LINE, radius=6)
+    text(draw, (545, 455), "Calendrier", 15, MUTED)
+    text(draw, (545, 500), "Prévisionnel", 23, NAVY, True)
+    draw.line((545, 535, 1200, 535), fill=LINE, width=2)
+    text(draw, (545, 585), "Mission exemple (-1h)", 22, INK, True)
+    text(draw, (545, 635), "Lun 20 juillet 2026 09:00 - 18:00", 17, MUTED)
+    text(draw, (545, 690), "Source : planning-exemple-semaine.pdf", 16, MUTED)
+    panel(draw, (1300, 405, 1835, 760), fill=SOFT, outline=LINE, radius=6)
+    text(draw, (1340, 455), "Aperçu de l’événement", 18, NAVY, True)
+    text(draw, (1340, 510), "Vérifie le calendrier proposé", 16, MUTED)
+    text(draw, (1340, 545), "puis confirme l’import.", 16, MUTED)
     subtitle(draw, "Ouvre le fichier .ics, vérifie le calendrier proposé,\npuis clique sur Ajouter au calendrier.")
     return image
 
 
 def slide_done() -> Image.Image:
     image, draw = base_slide("C’est terminé", "Fin")
-    panel(draw, (250, 285, 1670, 760), fill="white", outline="#b7ddd5", radius=18)
-    text(draw, (960, 415), "✓", 100, TEAL, True, "mm")
-    text(draw, (960, 545), "Ton planning est dans Outlook", 44, NAVY, True, "mm")
-    text(draw, (960, 620), "Tu peux maintenant le consulter et le modifier comme un agenda classique.", 24, MUTED, False, "mm")
+    draw_app_shell(draw)
+    draw_summary(draw, "Import terminé dans Outlook", "Résumé")
+    panel(draw, (720, 365, 1605, 620), fill=GREEN, outline="#9bcfbd", radius=6)
+    text(draw, (1160, 430), "✓", 72, TEAL, True, "mm")
+    text(draw, (1160, 520), "Ton planning est dans Outlook", 30, NAVY, True, "mm")
+    text(draw, (1160, 570), "Tu peux maintenant le consulter et le modifier.", 19, MUTED, False, "mm")
     subtitle(draw, "Conseil : conserve le PDF source et le fichier ICS généré\npour pouvoir refaire un export si le planning change.")
     return image
 
