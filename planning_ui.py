@@ -47,6 +47,8 @@ APP_WINDOW: Any | None = None
 
 
 def settings_path() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Planning To ICS" / "settings.json"
     base = os.environ.get("APPDATA")
     if base:
         return Path(base) / "Planning To ICS" / "settings.json"
@@ -1254,6 +1256,14 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def preferred_webview_gui() -> str | None:
+    if sys.platform == "win32":
+        return "edgechromium"
+    if sys.platform == "darwin":
+        return "cocoa"
+    return None
+
+
 def main() -> int:
     global APP_WINDOW
     args = parse_args()
@@ -1291,7 +1301,11 @@ def main() -> int:
                 min_size=(860, 620),
                 background_color="#ffffff",
             )
-            webview.start(gui="edgechromium", debug=False)
+            gui = preferred_webview_gui()
+            if gui:
+                webview.start(gui=gui, debug=False)
+            else:
+                webview.start(debug=False)
         except Exception:
             APP_WINDOW = None
             webbrowser.open(url)

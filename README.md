@@ -1,6 +1,6 @@
 # Planning to ICS V1.07
 
-Application locale pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
+Application locale Windows et macOS pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
 
 
 ## Origine du projet
@@ -31,11 +31,21 @@ L'assistant propose la création de raccourcis, avec un raccourci dans le menu D
 
 Si une version de Planning to ICS ou Planning To ICS est déjà installée, l'assistant le détecte au démarrage. Il propose soit de remplacer la version existante, soit d'installer la nouvelle version en plus dans un autre dossier avec des raccourcis séparés.
 
+### macOS
+
+Télécharger le paquet [Planning_to_ICS_V1.07_macOS.dmg](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.07/Planning_to_ICS_V1.07_macOS.dmg).
+
+1. Ouvrir le fichier `.dmg` téléchargé.
+2. Faire glisser `Planning To ICS` dans le dossier **Applications**.
+3. Ouvrir l'application depuis **Applications**.
+
+Le paquet macOS contient Python et les dépendances nécessaires. Il n'est pas encore signé par Apple : au premier lancement, faire un clic droit sur l'application, choisir **Ouvrir**, puis confirmer.
+
 ## Usage
 
-Lancer `Planning to ICS` depuis le menu Démarrer.
+Lancer `Planning to ICS` depuis le menu Démarrer sous Windows ou depuis le dossier Applications sous macOS.
 
-L'application s'ouvre dans une fenêtre Windows dédiée avec :
+L'application s'ouvre dans une fenêtre dédiée avec :
 
 - le choix du dossier où se trouvent les plannings PDF par défaut ;
 - la liste de tous les PDF trouvés dans ce dossier et ses sous-dossiers ;

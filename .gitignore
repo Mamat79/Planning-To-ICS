@@ -6,6 +6,8 @@ _internal/
 tmp/
 installer-output/*
 *.spec.bak
+assets/*.icns
+assets/*.iconset/
 
 Planning To ICS.exe
 Planning to ICS.exe
