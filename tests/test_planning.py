@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pytest
 from reportlab.pdfgen import canvas
 
 import planning_ui
@@ -198,6 +199,7 @@ def test_pdf_list_includes_nested_and_uppercase_extensions(tmp_path: Path) -> No
     assert listed == {"a.pdf", "b.PDF"}
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows default launcher only exists on Windows")
 def test_open_export_uses_windows_default_application(tmp_path: Path, monkeypatch) -> None:
     ics_path = tmp_path / "planning.ics"
     ics_path.write_text("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n", encoding="utf-8")
@@ -207,3 +209,17 @@ def test_open_export_uses_windows_default_application(tmp_path: Path, monkeypatc
     planning_ui.open_export_target(ics_path, show_folder=False)
     planning_ui.open_export_target(ics_path, show_folder=True)
     assert opened == [str(ics_path), str(tmp_path)]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="This test covers the Unix launcher")
+def test_open_export_uses_unix_default_application(tmp_path: Path, monkeypatch) -> None:
+    ics_path = tmp_path / "planning.ics"
+    ics_path.write_text("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n", encoding="utf-8")
+    launched: list[list[str]] = []
+    monkeypatch.setattr(planning_ui.subprocess, "Popen", lambda command: launched.append(command))
+
+    planning_ui.open_export_target(ics_path, show_folder=False)
+    planning_ui.open_export_target(ics_path, show_folder=True)
+
+    launcher = "open" if planning_ui.sys.platform == "darwin" else "xdg-open"
+    assert launched == [[launcher, str(ics_path)], [launcher, str(tmp_path)]]
