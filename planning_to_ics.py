@@ -839,6 +839,73 @@ def strip_person_from_events(days: list[DayExtraction], person_name: str) -> lis
     return updated_days
 
 
+SEGMENT_SUFFIX_RE = re.compile(r"\s+\(\d+/\d+\)$")
+PAUSE_SUFFIX_RE = re.compile(r"\s+\(-(?P<hours>\d+)h(?P<minutes>\d{2})?\)$")
+
+
+def _base_event_summary(summary: str) -> str:
+    summary = SEGMENT_SUFFIX_RE.sub("", summary).strip()
+    return PAUSE_SUFFIX_RE.sub("", summary).strip()
+
+
+def _summary_pause_minutes(summary: str) -> int:
+    match = PAUSE_SUFFIX_RE.search(summary)
+    if not match:
+        return 0
+    return int(match.group("hours")) * 60 + int(match.group("minutes") or 0)
+
+
+def _merge_key(event: WorkEvent) -> tuple[str, str, str]:
+    """Return the business identity used for same-day vacation merging."""
+    summary = _base_event_summary(event.summary)
+    return normalize_text(summary), normalize_text(event.source_text), normalize_text(event.day_label)
+
+
+def _pause_suffix(minutes: int) -> str:
+    hours, remainder = divmod(minutes, 60)
+    return f"(-{hours}h{remainder:02d})" if remainder else f"(-{hours}h)"
+
+
+def merge_identical_events(events: list[WorkEvent]) -> list[WorkEvent]:
+    """Merge identical vacations from one planning column, including overnight ends."""
+    if not events:
+        return []
+
+    merged: list[WorkEvent] = []
+    for event in sorted(events, key=lambda item: (item.start, item.end, item.summary)):
+        if not merged:
+            merged.append(event)
+            continue
+
+        previous = merged[-1]
+        same_planning_day = previous.day_label == event.day_label and previous.start.date() == event.start.date()
+        can_merge = (
+            same_planning_day
+            and event.start >= previous.end
+            and _merge_key(previous) == _merge_key(event)
+        )
+        if not can_merge:
+            merged.append(event)
+            continue
+
+        pause_start = previous.end
+        pause_end = event.start
+        total_pause = _summary_pause_minutes(previous.summary) + max(
+            int((pause_end - pause_start).total_seconds() // 60), 0
+        )
+        summary = _base_event_summary(previous.summary)
+        if total_pause:
+            summary = f"{summary} {_pause_suffix(total_pause)}"
+        merged[-1] = replace(
+            previous,
+            summary=summary,
+            end=event.end,
+            source_text=previous.source_text,
+        )
+
+    return merged
+
+
 def explicit_pause_window(raw_text: str, start_dt: datetime, end_dt: datetime) -> tuple[datetime, datetime] | None:
     match = EXPLICIT_PAUSE_RE.search(raw_text)
     if not match:
@@ -1116,7 +1183,10 @@ def extract_planning(
         matched_score=score,
         week=request.week,
         year=request.year,
-        days=strip_person_from_events(days, person_name),
+        days=[
+            replace(day, included=merge_identical_events(day.included))
+            for day in strip_person_from_events(days, person_name)
+        ],
         warnings=warnings,
     )
 
@@ -1162,6 +1232,7 @@ def canonical_person_for_filename(person: str) -> tuple[str, str]:
 
 
 def ics_escape(value: str) -> str:
+    value = value.replace("\r\n", "\n").replace("\r", "\n")
     return (
         value.replace("\\", "\\\\")
         .replace(";", r"\;")
@@ -1250,7 +1321,7 @@ def output_ics_path(output_dir: Path, result: ExtractionResult) -> Path:
 
 def write_ics_file(path: Path, result: ExtractionResult) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(ICS_FILE_BOM + build_ics(result).encode(ICS_FILE_ENCODING))
+    path.write_bytes(ICS_FILE_BOM + build_ics(result).encode(ICS_FILE_ENCODING, errors="strict"))
 
 
 def write_log(output_dir: Path, result: ExtractionResult, ics_path: Path | None) -> None:

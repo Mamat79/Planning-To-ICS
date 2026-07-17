@@ -5,11 +5,21 @@ import os
 import urllib.parse
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from reportlab.pdfgen import canvas
 
 import planning_ui
-from planning_to_ics import Request, build_ics, extract_planning, write_ics_file
+from planning_to_ics import (
+    ExtractionResult,
+    Request,
+    WorkEvent,
+    build_ics,
+    extract_planning,
+    merge_identical_events,
+    DayExtraction,
+    write_ics_file,
+)
 from tests.conftest import build_planning_pdf
 
 
@@ -30,10 +40,11 @@ def test_people_and_events_are_extracted_from_a_real_pdf_table(planning_pdf: Pat
         explicit_pdf=planning_pdf,
         assume_yes=True,
     )
-    assert len(result.events) == 2
-    assert [event.summary for event in result.events] == ["Hôtel Étoilé (1/2)", "Hôtel Étoilé (2/2)"]
+    assert len(result.events) == 1
+    assert [event.summary for event in result.events] == ["Hôtel Étoilé (-1h)"]
     assert result.events[0].start.strftime("%Y-%m-%d %H:%M") == "2026-07-20 09:00"
     assert result.events[-1].end.strftime("%Y-%m-%d %H:%M") == "2026-07-20 18:00"
+    assert "(-1h)" in result.events[0].summary
 
 
 def test_people_cache_refreshes_when_same_pdf_path_is_replaced(planning_pdf: Path, tmp_path: Path) -> None:
@@ -61,6 +72,97 @@ def test_ics_is_outlook_compatible_and_keeps_accents(planning_pdf: Path, tmp_pat
     assert "SUMMARY:Hôtel Étoilé" in text
     assert "\r\n" in text
     assert all(len(line.encode("utf-8")) <= 75 for line in build_ics(result).splitlines())
+
+
+def make_event(
+    day: int,
+    start_hour: int,
+    start_minute: int,
+    end_hour: int,
+    end_minute: int,
+    summary: str = "Mission Hôtel Étoilé",
+    description: str = "Mission Hôtel Étoilé, équipe d'été, l'équipe d'astreinte",
+) -> WorkEvent:
+    tz = ZoneInfo("Europe/Paris")
+    start = datetime(2026, 7, day, start_hour, start_minute, tzinfo=tz)
+    end = datetime(2026, 7, day, end_hour, end_minute, tzinfo=tz)
+    return WorkEvent("Lun", summary, description, start, end, description)
+
+
+def test_merge_two_identical_same_day_calculates_one_hour_pause() -> None:
+    merged = merge_identical_events([make_event(20, 9, 0, 12, 0), make_event(20, 13, 0, 17, 0)])
+
+    assert len(merged) == 1
+    assert merged[0].start.hour == 9 and merged[0].end.hour == 17
+    assert merged[0].summary == "Mission Hôtel Étoilé (-1h)"
+    assert "(-1h)" in merged[0].summary
+
+
+def test_merge_three_identical_same_day_keeps_all_pauses() -> None:
+    merged = merge_identical_events(
+        [make_event(20, 8, 0, 10, 0), make_event(20, 11, 0, 12, 0), make_event(20, 14, 0, 18, 0)]
+    )
+
+    assert len(merged) == 1
+    assert merged[0].summary == "Mission Hôtel Étoilé (-3h)"
+    assert "(-3h)" in merged[0].summary
+
+
+def test_merge_calculates_non_integer_pause() -> None:
+    merged = merge_identical_events([make_event(20, 9, 0, 12, 0), make_event(20, 13, 30, 17, 0)])
+
+    assert len(merged) == 1
+    assert merged[0].summary == "Mission Hôtel Étoilé (-1h30)"
+    assert "(-1h30)" in merged[0].summary
+
+
+def test_merge_keeps_separate_planning_dates() -> None:
+    merged = merge_identical_events([make_event(20, 9, 0, 17, 0), make_event(21, 9, 0, 17, 0)])
+
+    assert len(merged) == 2
+
+
+def test_merge_allows_vacation_to_end_after_midnight() -> None:
+    tz = ZoneInfo("Europe/Paris")
+    business_text = "Mission Hôtel Étoilé, équipe d'été, l'équipe d'astreinte"
+    overnight = WorkEvent(
+        "Lun",
+        "Mission Hôtel Étoilé",
+        business_text,
+        datetime(2026, 7, 20, 21, 0, tzinfo=tz),
+        datetime(2026, 7, 21, 1, 0, tzinfo=tz),
+        business_text,
+    )
+    merged = merge_identical_events([make_event(20, 8, 0, 12, 0), make_event(20, 14, 0, 19, 0), overnight])
+
+    assert len(merged) == 1
+    assert merged[0].end == overnight.end
+    assert merged[0].summary == "Mission Hôtel Étoilé (-4h)"
+
+
+def test_merge_requires_same_business_information() -> None:
+    different_title = make_event(20, 13, 0, 17, 0, summary="Mission différente")
+    different_details = make_event(20, 13, 0, 17, 0, description="Lieu différent")
+
+    assert len(merge_identical_events([make_event(20, 9, 0, 12, 0), different_title])) == 2
+    assert len(merge_identical_events([make_event(20, 9, 0, 12, 0), different_details])) == 2
+
+
+def test_ics_escapes_french_special_characters_and_is_valid() -> None:
+    event = make_event(20, 9, 0, 17, 0, summary="Équipe d'été, côté théâtre; test\\ok")
+    result = ExtractionResult(
+        Path("planning épreuve.pdf"),
+        "Leroy Matthieu",
+        1.0,
+        30,
+        2026,
+        [DayExtraction("Lun", event.start.date(), "", [event])],
+        [],
+    )
+
+    ics = build_ics(result)
+    assert r"SUMMARY:Équipe d'été\, côté théâtre\; test\\ok" in ics
+    assert ics.startswith("BEGIN:VCALENDAR")
 
 
 def test_pdf_diagnostic_reports_supported_and_unsupported_files(
