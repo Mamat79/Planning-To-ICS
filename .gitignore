@@ -4,7 +4,7 @@ build/
 dist/
 _internal/
 tmp/
-installer-output/*.exe
+installer-output/*
 *.spec.bak
 
 Planning To ICS.exe
