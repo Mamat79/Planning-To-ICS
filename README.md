@@ -58,7 +58,7 @@ Une fois le fichier `.ics` généré, il faut l'importer dans l'agenda voulu. L'
 
 ## Tutoriel vidéo
 
-Vidéo silencieuse avec sous-titres : [télécharger le tutoriel V1.07](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.07/Planning_to_ICS_V1.07_Tutoriel.mp4).
+Tutoriel vidéo sous-titré : [télécharger le tutoriel V1.07](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.07/Planning_to_ICS_V1.07_Tutoriel.mp4).
 
 L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visible. Fermer la fenêtre arrête complètement l'application.
 

@@ -59,9 +59,9 @@ def base_slide(title: str, step: str) -> tuple[Image.Image, ImageDraw.ImageDraw]
 
 
 def subtitle(draw: ImageDraw.ImageDraw, value: str) -> None:
-    draw.rectangle((0, 930, WIDTH, HEIGHT), fill="#102a43")
-    draw.rectangle((48, 958, 58, 1030), fill="#65c6b4")
-    draw.multiline_text((88, 950), value, font=font(25), fill="white", spacing=5)
+    draw.rounded_rectangle((470, 850, 1855, 920), radius=8, fill="#17354d", outline="#7892a5", width=1)
+    draw.rectangle((490, 865, 496, 905), fill="#65c6b4")
+    draw.multiline_text((518, 858), value, font=font(19), fill="white", spacing=3)
 
 
 def field(draw: ImageDraw.ImageDraw, y: int, label: str, value: str, button_label: str | None = None) -> None:
@@ -112,9 +112,9 @@ def slide_cover() -> Image.Image:
     draw_summary(draw, "Prêt à traiter : planning-exemple-semaine.pdf")
     panel(draw, (735, 355, 1600, 690), fill="#f1faf7", outline="#9bcfbd", radius=6)
     text(draw, (790, 420), "PDF  →  ICS  →  Outlook", 54, NAVY, True)
-    text(draw, (790, 525), "Une vidéo silencieuse avec sous-titres.", 25, MUTED)
+    text(draw, (790, 525), "Du PDF à l’agenda Outlook, étape par étape.", 25, MUTED)
     button(draw, (790, 590, 1010, 642), "Démarrer", TEAL)
-    subtitle(draw, "Dans cette vidéo : choisir le PDF, sélectionner le technicien,\nprévisualiser, générer l’ICS et l’importer dans Outlook.")
+    subtitle(draw, "Choisis un PDF, sélectionne le technicien, puis génère l’ICS.\nOuvre ensuite le fichier pour l’ajouter dans Outlook.")
     return image
 
 
