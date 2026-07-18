@@ -265,6 +265,25 @@ def test_pdf_diagnostic_reports_supported_and_unsupported_files(
     assert "Planning des Techniciens" in unsupported["message"]
 
 
+def test_settings_can_be_imported_and_reset(tmp_path: Path, monkeypatch) -> None:
+    settings_file = tmp_path / "settings.json"
+    monkeypatch.setattr(planning_ui, "settings_path", lambda: settings_file)
+
+    planning_ui.save_settings({"planning_dir": "D:/Plannings", "output_dir": "D:/Exports"})
+    assert planning_ui.load_settings() == {"planning_dir": "D:/Plannings", "output_dir": "D:/Exports"}
+
+    planning_ui.import_settings({"planning_dir": "E:/Nouveaux plannings"})
+    assert planning_ui.load_settings()["planning_dir"] == "E:/Nouveaux plannings"
+    assert planning_ui.load_settings()["output_dir"] == "D:/Exports"
+
+    assert planning_ui.reset_settings() == planning_ui.default_settings()
+    assert not settings_file.exists()
+
+
+def test_version_key_compares_release_numbers() -> None:
+    assert planning_ui.version_key("v1.10") > planning_ui.version_key("V1.8")
+
+
 def test_pdf_list_includes_nested_and_uppercase_extensions(tmp_path: Path) -> None:
     nested = tmp_path / "Sous-dossier"
     nested.mkdir()

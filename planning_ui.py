@@ -345,7 +345,7 @@ def page_shell(
       font-size: 13px;
       color: var(--muted);
     }}
-    select, input[type="text"], input[type="date"], input[type="time"], textarea {{
+    select, input[type="text"], input[type="search"], input[type="date"], input[type="time"], textarea {{
       width: 100%;
       min-height: 42px;
       margin-bottom: 16px;
@@ -360,7 +360,7 @@ def page_shell(
       min-height: 74px;
       resize: vertical;
     }}
-    select:focus, input[type="text"]:focus, input[type="date"]:focus, input[type="time"]:focus, textarea:focus {{
+    select:focus, input[type="text"]:focus, input[type="search"]:focus, input[type="date"]:focus, input[type="time"]:focus, textarea:focus {{
       outline: 2px solid rgba(20, 108, 95, .2);
       border-color: var(--accent);
     }}
@@ -528,6 +528,7 @@ def page_shell(
       background: rgba(255, 255, 255, .75);
     }}
     .multi-panel[hidden] {{ display: none; }}
+    .multi-search {{ margin-bottom: 8px !important; min-height: 36px !important; }}
     .multi-panel select {{ min-height: 105px; margin-bottom: 8px; }}
     .compact-actions {{ display: flex; gap: 6px; flex-wrap: wrap; }}
     .compact-actions button {{ min-height: 30px; padding: 5px 8px; font-size: 12px; }}
@@ -578,6 +579,26 @@ def page_shell(
     }}
     .toast[hidden] {{ display: none; }}
     button:disabled {{ opacity: .65; cursor: wait; }}
+    .progress-indicator {{
+      display: none;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }}
+    body.busy .progress-indicator {{ display: block; }}
+    .progress-indicator::before {{
+      content: "";
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      margin-right: 7px;
+      border: 2px solid var(--line);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      vertical-align: -1px;
+      animation: planning-spin .8s linear infinite;
+    }}
+    @keyframes planning-spin {{ to {{ transform: rotate(360deg); }} }}
     body.dark {{
       --text: #edf1f5;
       --muted: #b5bec8;
@@ -589,7 +610,7 @@ def page_shell(
       color: var(--text);
     }}
     body.dark header, body.dark section, body.dark pre, body.dark table,
-    body.dark select, body.dark input[type="text"], body.dark input[type="date"],
+    body.dark select, body.dark input[type="text"], body.dark input[type="search"], body.dark input[type="date"],
     body.dark input[type="time"], body.dark textarea {{ background: #252b31; color: var(--text); }}
     body.dark header {{ border-color: var(--line); }}
     body.dark form {{ background: #20262b; border-color: var(--line); }}
@@ -668,6 +689,7 @@ def page_shell(
       </select>
       <label class="multi-toggle"><input id="multi_mode" type="checkbox"> Exporter plusieurs techniciens</label>
       <div class="multi-panel" id="multi_panel" hidden>
+        <input class="multi-search" id="people_search" type="search" placeholder="Rechercher un technicien..." aria-label="Rechercher un technicien">
         <select id="people_multi" multiple aria-label="Techniciens à exporter"></select>
         <input id="people_multi_csv" name="people_multi_csv" type="hidden" value="">
         <div class="compact-actions">
@@ -688,6 +710,7 @@ def page_shell(
         <button class="secondary" type="submit" name="action" value="preview">Prévisualiser</button>
         <button class="ghost" type="submit" name="action" value="quit" formnovalidate>Quitter l'application</button>
       </div>
+      <div class="progress-indicator" role="status" aria-live="polite">Analyse du PDF en cours...</div>
       <p class="import-note">Après génération, importe le fichier ICS dans ton agenda Outlook, Google Agenda ou autre calendrier. L'application crée le fichier, elle ne l'ajoute pas automatiquement à l'agenda.</p>
       <div class="settings-tools">
         <button class="ghost" id="export_settings" type="button">Exporter mes réglages</button>
@@ -716,6 +739,7 @@ def page_shell(
     const multiPanel = document.getElementById("multi_panel");
     const multiPeople = document.getElementById("people_multi");
     const multiPeopleCsv = document.getElementById("people_multi_csv");
+    const peopleSearch = document.getElementById("people_search");
     const settingsFile = document.getElementById("settings_file");
     const toast = document.createElement("div");
     toast.className = "toast";
@@ -890,6 +914,12 @@ def page_shell(
     multiPeople.addEventListener("change", () => {{
       multiPeopleCsv.value = Array.from(multiPeople.selectedOptions).map(option => option.value).join("\n");
     }});
+    peopleSearch.addEventListener("input", () => {{
+      const query = peopleSearch.value.trim().toLocaleLowerCase();
+      Array.from(multiPeople.options).forEach(option => {{
+        option.hidden = query !== "" && !option.textContent.toLocaleLowerCase().includes(query);
+      }});
+    }});
     document.getElementById("select_all_people").addEventListener("click", () => {{
       Array.from(multiPeople.options).forEach(option => option.selected = true);
       multiPeople.dispatchEvent(new Event("change"));
@@ -906,7 +936,7 @@ def page_shell(
       if (!uri) return "";
       const decoded = decodeURIComponent(uri.trim());
       if (!decoded.startsWith("file://")) return decoded;
-      return decoded.slice(7).replace(/^\/([A-Za-z]:)/, "$1");
+      return decoded.slice(7).replace(new RegExp("^/([A-Za-z]:)"), "$1");
     }}
     ["dragenter", "dragover"].forEach(name => dropZone.addEventListener(name, event => {{
       event.preventDefault();

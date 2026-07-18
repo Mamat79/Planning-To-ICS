@@ -145,6 +145,12 @@ begin
   InstallMode := 0;
   ScanExistingInstalls();
 
+  if CmdLineParamExists('/INSTALLSEPARATE') then
+  begin
+    InstallMode := 1;
+    exit;
+  end;
+
   if ExistingCount > 0 then
   begin
     if WizardSilent() then
