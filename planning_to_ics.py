@@ -699,13 +699,23 @@ def find_person_blocks(pdf: Path, request: Request) -> list[tuple[PersonBlock, f
 
 def extract_people_from_pdf(pdf: Path, request: Request) -> list[str]:
     names: dict[str, str] = {}
+    for block in extract_all_person_blocks(pdf, request):
+        clean_name = block.name.replace("\n", " ").strip()
+        key = normalize_text(clean_name)
+        if clean_name and key not in names:
+            names[key] = clean_name
+    return sorted(names.values(), key=normalize_text)
+
+
+def extract_all_person_blocks(pdf: Path, request: Request) -> list[PersonBlock]:
+    blocks: list[PersonBlock] = []
     with pdfplumber.open(pdf) as document:
-        for page in document.pages:
+        for page_index, page in enumerate(document.pages):
             try:
                 tables = page.find_tables()
             except Exception:
                 continue
-            for table in tables:
+            for table_index, table in enumerate(tables):
                 try:
                     data = table.extract(x_tolerance=2, y_tolerance=2)
                 except Exception:
@@ -719,12 +729,17 @@ def extract_people_from_pdf(pdf: Path, request: Request) -> list[str]:
                     table_day_columns(data[header_index], request)
                 except ValueError:
                     continue
-                for name, _rows in iter_person_blocks(data, header_index):
-                    clean_name = name.replace("\n", " ").strip()
-                    key = normalize_text(clean_name)
-                    if clean_name and key not in names:
-                        names[key] = clean_name
-    return sorted(names.values(), key=normalize_text)
+                for name, rows in iter_person_blocks(data, header_index):
+                    blocks.append(
+                        PersonBlock(
+                            name=name,
+                            page_number=page_index + 1,
+                            table_index=table_index,
+                            rows=rows,
+                            header=data[header_index],
+                        )
+                    )
+    return blocks
 
 
 def list_people_for_week(source_dir: Path, week: int, year: int, explicit_pdf: Path | None = None) -> list[str]:
@@ -1188,6 +1203,79 @@ def choose_best_match(
     return best
 
 
+def extraction_result_from_block(
+    pdf: Path,
+    block: PersonBlock,
+    score: float,
+    request: Request,
+    timezone: str = DEFAULT_TIMEZONE,
+    header_warnings: list[str] | None = None,
+) -> ExtractionResult:
+    tz = ZoneInfo(timezone)
+    warnings = list(header_warnings) if header_warnings is not None else parse_pdf_date_headers(pdf, request)
+    columns = table_day_columns(block.header, request)
+    days: list[DayExtraction] = []
+    for offset, column in enumerate(columns):
+        label = DAY_LABELS[offset][1]
+        raw = day_raw_text(block, column)
+        included, day_warnings, ignored_reason = parse_events_for_day(raw, label, column.date, tz)
+        days.append(
+            DayExtraction(
+                label=label,
+                date=column.date,
+                raw_text=raw,
+                included=included,
+                ignored_reason=ignored_reason if not included else None,
+                warnings=tuple(day_warnings),
+            )
+        )
+        warnings.extend(day_warnings)
+
+    person_name = block.name.replace("\n", " ")
+    return ExtractionResult(
+        pdf=pdf,
+        person_name=person_name,
+        matched_score=score,
+        week=request.week,
+        year=request.year,
+        days=[
+            replace(day, included=merge_identical_events(day.included))
+            for day in strip_person_from_events(days, person_name)
+        ],
+        warnings=warnings,
+    )
+
+
+def extract_all_plannings(
+    pdf: Path,
+    week: int,
+    year: int,
+    timezone: str = DEFAULT_TIMEZONE,
+) -> list[ExtractionResult]:
+    request = Request(person=DEFAULT_PERSON, week=week, year=year)
+    header_warnings = parse_pdf_date_headers(pdf, request)
+    blocks_by_name: dict[str, PersonBlock] = {}
+    for block in extract_all_person_blocks(pdf, request):
+        key = normalize_text(block.name)
+        if key and key not in blocks_by_name:
+            blocks_by_name[key] = block
+
+    return sorted(
+        (
+            extraction_result_from_block(
+                pdf,
+                block,
+                1.0,
+                request,
+                timezone=timezone,
+                header_warnings=header_warnings,
+            )
+            for block in blocks_by_name.values()
+        ),
+        key=lambda result: normalize_text(result.person_name),
+    )
+
+
 def extract_planning(
     request: Request,
     source_dir: Path,
@@ -1219,39 +1307,12 @@ def extract_planning(
             break
 
     candidate, block, score = choose_best_match(matches_by_pdf, request, assume_yes)
-    tz = ZoneInfo(timezone)
-    warnings = parse_pdf_date_headers(candidate.path, request)
-    columns = table_day_columns(block.header, request)
-    days: list[DayExtraction] = []
-    for offset, column in enumerate(columns):
-        label = DAY_LABELS[offset][1]
-        raw = day_raw_text(block, column)
-        included, day_warnings, ignored_reason = parse_events_for_day(raw, label, column.date, tz)
-        days.append(
-            DayExtraction(
-                label=label,
-                date=column.date,
-                raw_text=raw,
-                included=included,
-                ignored_reason=ignored_reason if not included else None,
-                warnings=tuple(day_warnings),
-            )
-        )
-        warnings.extend(day_warnings)
-
-    person_name = block.name.replace("\n", " ")
-
-    return ExtractionResult(
-        pdf=candidate.path,
-        person_name=person_name,
-        matched_score=score,
-        week=request.week,
-        year=request.year,
-        days=[
-            replace(day, included=merge_identical_events(day.included))
-            for day in strip_person_from_events(days, person_name)
-        ],
-        warnings=warnings,
+    return extraction_result_from_block(
+        candidate.path,
+        block,
+        score,
+        request,
+        timezone=timezone,
     )
 
 

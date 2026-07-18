@@ -34,9 +34,12 @@ from planning_to_ics import (
     Request,
     WorkEvent,
     build_ics,
+    extract_all_plannings,
     extract_planning,
     format_summary,
     list_people_for_week,
+    name_match_score,
+    normalize_text,
     output_ics_path,
     week_year_from_pdf,
     week_year_from_path,
@@ -515,7 +518,7 @@ def page_shell(
       display: flex;
       align-items: center;
       gap: 8px;
-      margin: -4px 0 10px;
+      margin: 0;
       color: var(--muted);
       font-size: 12px;
     }}
@@ -532,6 +535,36 @@ def page_shell(
     .multi-panel select {{ min-height: 105px; margin-bottom: 8px; }}
     .compact-actions {{ display: flex; gap: 6px; flex-wrap: wrap; }}
     .compact-actions button {{ min-height: 30px; padding: 5px 8px; font-size: 12px; }}
+    .selection-toolbar {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 0 0 14px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--soft);
+    }}
+    .selection-toolbar .multi-toggle {{ margin-left: auto; }}
+    .technician-editor {{
+      margin: 0 0 22px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--soft);
+    }}
+    .technician-editor h3 {{ margin: 0 0 12px; font-size: 16px; }}
+    .mission-list {{ color: var(--muted); line-height: 1.4; }}
+    .status-badge {{
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #e8f5f1;
+      color: #174f3f;
+      font-size: 11px;
+      font-weight: 600;
+    }}
     .settings-tools {{
       display: flex;
       gap: 7px;
@@ -615,7 +648,8 @@ def page_shell(
     body.dark header {{ border-color: var(--line); }}
     body.dark form {{ background: #20262b; border-color: var(--line); }}
     body.dark th {{ background: #303840; color: var(--muted); }}
-    body.dark .multi-panel, body.dark .diagnostic-card, body.dark .drop-zone {{ background: #2b3239; }}
+    body.dark .multi-panel, body.dark .diagnostic-card, body.dark .drop-zone,
+    body.dark .selection-toolbar, body.dark .technician-editor {{ background: #2b3239; }}
     body.dark button.secondary, body.dark button.ghost {{ background: #252b31; color: var(--accent); }}
     body.dark .import-note {{ background: #203a35; color: #bfe9dd; }}
     .import-note {{
@@ -687,17 +721,6 @@ def page_shell(
       <select id="person" name="person" required>
         {person_options(people, selected_person)}
       </select>
-      <label class="multi-toggle"><input id="multi_mode" type="checkbox"> Exporter plusieurs techniciens</label>
-      <div class="multi-panel" id="multi_panel" hidden>
-        <input class="multi-search" id="people_search" type="search" placeholder="Rechercher un technicien..." aria-label="Rechercher un technicien">
-        <select id="people_multi" multiple aria-label="Techniciens à exporter"></select>
-        <input id="people_multi_csv" name="people_multi_csv" type="hidden" value="">
-        <div class="compact-actions">
-          <button class="ghost" id="select_all_people" type="button">Tout sélectionner</button>
-          <button class="ghost" id="clear_people" type="button">Tout désélectionner</button>
-          <button class="secondary" type="submit" name="action" value="export_multiple">Exporter la sélection</button>
-        </div>
-      </div>
 
       <label for="output_dir">Exporter vers</label>
       <div class="field-row">
@@ -707,7 +730,8 @@ def page_shell(
 
       <div class="actions">
         <button type="submit" name="action" value="generate">Générer ICS</button>
-        <button class="secondary" type="submit" name="action" value="preview">Prévisualiser</button>
+        <button class="secondary" type="submit" name="action" value="preview">Prévisualiser et modifier</button>
+        <button class="secondary" type="submit" name="action" value="choose_multiple">Ajouter des techniciens</button>
         <button class="ghost" type="submit" name="action" value="quit" formnovalidate>Quitter l'application</button>
       </div>
       <div class="progress-indicator" role="status" aria-live="polite">Analyse du PDF en cours...</div>
@@ -735,11 +759,6 @@ def page_shell(
     const browseOutputButton = document.getElementById("browse_output");
     const mainForm = document.getElementById("main_form");
     const dropZone = document.getElementById("drop_zone");
-    const multiMode = document.getElementById("multi_mode");
-    const multiPanel = document.getElementById("multi_panel");
-    const multiPeople = document.getElementById("people_multi");
-    const multiPeopleCsv = document.getElementById("people_multi_csv");
-    const peopleSearch = document.getElementById("people_search");
     const settingsFile = document.getElementById("settings_file");
     const toast = document.createElement("div");
     toast.className = "toast";
@@ -829,7 +848,6 @@ def page_shell(
     async function loadPeople() {{
       const pdf = manualPdfInput.value.trim();
       personSelect.innerHTML = '<option value="">Chargement...</option>';
-      multiPeople.innerHTML = "";
       pdfInfo.className = "pdf-status loading";
       pdfInfo.textContent = "Analyse du PDF en cours...";
       if (!pdf) {{
@@ -853,10 +871,6 @@ def page_shell(
           option.value = person;
           option.textContent = person;
           personSelect.appendChild(option);
-          const multiOption = document.createElement("option");
-          multiOption.value = person;
-          multiOption.textContent = person;
-          multiPeople.appendChild(multiOption);
         }}
       }} catch (error) {{
         personSelect.innerHTML = '<option value="">Choisir...</option>';
@@ -910,27 +924,34 @@ def page_shell(
     browsePlanningDirButton.addEventListener("click", () => choose("planning_directory"));
     browsePdfButton.addEventListener("click", () => choose("pdf"));
     browseOutputButton.addEventListener("click", () => choose("directory"));
-    multiMode.addEventListener("change", () => {{
-      multiPanel.hidden = !multiMode.checked;
-      personSelect.required = !multiMode.checked;
-    }});
-    multiPeople.addEventListener("change", () => {{
-      multiPeopleCsv.value = Array.from(multiPeople.selectedOptions).map(option => option.value).join("\\n");
-    }});
-    peopleSearch.addEventListener("input", () => {{
-      const query = peopleSearch.value.trim().toLocaleLowerCase();
-      Array.from(multiPeople.options).forEach(option => {{
-        option.hidden = query !== "" && !option.textContent.toLocaleLowerCase().includes(query);
+    const peopleChoices = Array.from(document.querySelectorAll(".person-choice"));
+    const sameMissionToggle = document.getElementById("same_mission_toggle");
+    const selectAllTable = document.getElementById("select_all_people_table");
+    const clearPeopleTable = document.getElementById("clear_people_table");
+    const peopleTableSearch = document.getElementById("people_table_search");
+    if (sameMissionToggle) {{
+      sameMissionToggle.addEventListener("change", () => {{
+        peopleChoices.forEach(choice => {{
+          if (choice.dataset.common === "true") {{
+            choice.checked = sameMissionToggle.checked || choice.dataset.principal === "true";
+          }}
+        }});
       }});
-    }});
-    document.getElementById("select_all_people").addEventListener("click", () => {{
-      Array.from(multiPeople.options).forEach(option => option.selected = true);
-      multiPeople.dispatchEvent(new Event("change"));
-    }});
-    document.getElementById("clear_people").addEventListener("click", () => {{
-      Array.from(multiPeople.options).forEach(option => option.selected = false);
-      multiPeople.dispatchEvent(new Event("change"));
-    }});
+    }}
+    if (selectAllTable) {{
+      selectAllTable.addEventListener("click", () => peopleChoices.forEach(choice => choice.checked = true));
+    }}
+    if (clearPeopleTable) {{
+      clearPeopleTable.addEventListener("click", () => peopleChoices.forEach(choice => choice.checked = false));
+    }}
+    if (peopleTableSearch) {{
+      peopleTableSearch.addEventListener("input", () => {{
+        const query = peopleTableSearch.value.trim().toLocaleLowerCase();
+        document.querySelectorAll(".person-row").forEach(row => {{
+          row.hidden = query !== "" && !row.textContent.toLocaleLowerCase().includes(query);
+        }});
+      }});
+    }}
 
     function droppedPath(dataTransfer) {{
       const file = dataTransfer.files && dataTransfer.files[0];
@@ -997,10 +1018,7 @@ def page_shell(
     mainForm.addEventListener("submit", event => {{
       const submitter = event.submitter;
       if (!submitter) return;
-      if (submitter.value === "export_multiple") {{
-        multiPeopleCsv.value = Array.from(multiPeople.selectedOptions).map(option => option.value).join("\\n");
-      }}
-      if (["generate", "preview", "export_multiple", "export_edited"].includes(submitter.value)) {{
+      if (["generate", "preview", "choose_multiple"].includes(submitter.value)) {{
         submitter.disabled = true;
         submitter.textContent = "Analyse en cours...";
         document.body.classList.add("busy");
@@ -1211,33 +1229,114 @@ def event_editor(result: ExtractionResult, fields: dict[str, str], summary_html:
     """
 
 
+def multi_event_editor(
+    results: list[ExtractionResult], fields: dict[str, str], errors: list[str]
+) -> str:
+    hidden_fields = [
+        hidden_input("manual_pdf", fields.get("manual_pdf", "")),
+        hidden_input("planning_dir", fields.get("planning_dir", "")),
+        hidden_input("output_dir", fields.get("output_dir", "") or load_settings()["output_dir"]),
+        hidden_input("person", fields.get("person", "")),
+        hidden_input("multi_result_count", str(len(results))),
+    ]
+    editors: list[str] = []
+    for result_index, result in enumerate(results):
+        prefix = f"tech_{result_index}_"
+        hidden_fields.extend(
+            [
+                hidden_input(f"{prefix}edit_person_name", result.person_name),
+                hidden_input(f"{prefix}edit_pdf", str(result.pdf)),
+                hidden_input(f"{prefix}edit_week", str(result.week)),
+                hidden_input(f"{prefix}edit_year", str(result.year)),
+                hidden_input(f"{prefix}event_count", str(len(result.events))),
+            ]
+        )
+        rows: list[str] = []
+        for event_index, event in enumerate(result.events):
+            event_prefix = f"{prefix}event_{event_index}_"
+            rows.append(
+                f"""
+                <tr>
+                  <td class="event-enabled"><input type="checkbox" name="{event_prefix}enabled" checked></td>
+                  <td class="event-date">
+                    <input type="date" name="{event_prefix}start_date" value="{event.start.date().isoformat()}" required>
+                    <input type="date" name="{event_prefix}end_date" value="{event.end.date().isoformat()}" required>
+                  </td>
+                  <td class="event-time">
+                    <input type="time" name="{event_prefix}start_time" value="{event.start.strftime('%H:%M')}" required>
+                    <input type="time" name="{event_prefix}end_time" value="{event.end.strftime('%H:%M')}" required>
+                  </td>
+                  <td class="event-summary"><input type="text" name="{event_prefix}summary"
+                      value="{html.escape(event.summary, quote=True)}" required></td>
+                  <td class="event-description"><textarea name="{event_prefix}description">{html.escape(event.description)}</textarea></td>
+                </tr>
+                """
+            )
+        rows_html = "".join(rows) or '<tr><td colspan="5">Aucun événement extrait.</td></tr>'
+        editors.append(
+            f"""
+            <div class="technician-editor">
+              <h3>{html.escape(result.person_name)}</h3>
+              {diagnostics_html(result)}
+              <table>
+                <thead><tr><th>Inclure</th><th>Dates début / fin</th><th>Heures début / fin</th><th>Résumé</th><th>Description</th></tr></thead>
+                <tbody>{rows_html}</tbody>
+              </table>
+            </div>
+            """
+        )
+    error_html = ""
+    if errors:
+        error_html = (
+            '<div class="diagnostic-warning"><strong>Techniciens non prévisualisés :</strong><br>'
+            + "<br>".join(html.escape(error) for error in errors)
+            + "</div>"
+        )
+    return f"""
+      <h2>Prévisualisation de {len(results)} technicien(s)</h2>
+      <p class="empty">Chaque événement peut être décoché ou modifié avant l'export.</p>
+      {error_html}
+      <form method="post">
+        {''.join(hidden_fields)}
+        {''.join(editors)}
+        <div class="actions">
+          <button type="submit" name="action" value="export_multiple_edited">Exporter les ICS et le ZIP</button>
+          <button class="secondary" type="submit" name="action" value="choose_multiple">Modifier la sélection</button>
+        </div>
+      </form>
+    """
+
+
 def parse_local_datetime(date_text: str, time_text: str, tz: ZoneInfo) -> datetime:
     return datetime.combine(date.fromisoformat(date_text), time.fromisoformat(time_text), tzinfo=tz)
 
 
-def edited_result_from_fields(fields: dict[str, str]) -> ExtractionResult:
+def edited_result_from_fields(fields: dict[str, str], prefix: str = "") -> ExtractionResult:
+    def field(name: str, default: str = "") -> str:
+        return fields.get(f"{prefix}{name}", default)
+
     tz = ZoneInfo(DEFAULT_TIMEZONE)
-    count = int(fields.get("event_count", "0"))
+    count = int(field("event_count", "0"))
     events: list[WorkEvent] = []
     for index in range(count):
-        if fields.get(f"event_{index}_enabled") != "on":
+        if field(f"event_{index}_enabled") != "on":
             continue
-        summary = fields.get(f"event_{index}_summary", "").strip()
+        summary = field(f"event_{index}_summary").strip()
         if not summary:
             raise ValueError(f"Résumé manquant pour l'événement {index + 1}.")
         start = parse_local_datetime(
-            fields.get(f"event_{index}_start_date", ""),
-            fields.get(f"event_{index}_start_time", ""),
+            field(f"event_{index}_start_date"),
+            field(f"event_{index}_start_time"),
             tz,
         )
         end = parse_local_datetime(
-            fields.get(f"event_{index}_end_date", ""),
-            fields.get(f"event_{index}_end_time", ""),
+            field(f"event_{index}_end_date"),
+            field(f"event_{index}_end_time"),
             tz,
         )
         if end <= start:
             raise ValueError(f"L'événement {index + 1} finit avant son début.")
-        description = fields.get(f"event_{index}_description", "").strip()
+        description = field(f"event_{index}_description").strip()
         events.append(
             WorkEvent(
                 day_label=start.strftime("%a"),
@@ -1253,14 +1352,23 @@ def edited_result_from_fields(fields: dict[str, str]) -> ExtractionResult:
         raise ValueError("Aucun événement sélectionné pour l'export.")
 
     first_date = events[0].start.date()
-    pdf = Path(fields.get("edit_pdf") or fields.get("manual_pdf") or "")
-    parsed_year, parsed_week = week_year_for_pdf(pdf) if pdf else (first_date.isocalendar().year, first_date.isocalendar().week)
+    pdf = Path(field("edit_pdf") or fields.get("manual_pdf") or "")
+    edit_week = field("edit_week").strip()
+    edit_year = field("edit_year").strip()
+    if edit_week and edit_year:
+        parsed_week = int(edit_week)
+        parsed_year = int(edit_year)
+    elif pdf and pdf.is_file():
+        parsed_year, parsed_week = week_year_for_pdf(pdf)
+    else:
+        parsed_year = first_date.isocalendar().year
+        parsed_week = first_date.isocalendar().week
     return ExtractionResult(
         pdf=pdf,
-        person_name=fields.get("edit_person_name") or fields.get("person") or "Planning",
+        person_name=field("edit_person_name") or fields.get("person") or "Planning",
         matched_score=1.0,
-        week=int(fields.get("edit_week") or parsed_week),
-        year=int(fields.get("edit_year") or parsed_year),
+        week=parsed_week,
+        year=parsed_year,
         days=[
             DayExtraction(
                 label="Modifié",
@@ -1273,6 +1381,13 @@ def edited_result_from_fields(fields: dict[str, str]) -> ExtractionResult:
     )
 
 
+def edited_multiple_results_from_fields(fields: dict[str, str]) -> list[ExtractionResult]:
+    count = int(fields.get("multi_result_count", "0"))
+    if count <= 0:
+        raise ValueError("Aucune prévisualisation multiple à exporter.")
+    return [edited_result_from_fields(fields, prefix=f"tech_{index}_") for index in range(count)]
+
+
 def export_result(result: ExtractionResult, output_dir: Path) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     ics_path = output_ics_path(output_dir, result)
@@ -1281,7 +1396,149 @@ def export_result(result: ExtractionResult, output_dir: Path) -> Path:
     return ics_path
 
 
+MISSION_SUFFIX_RE = re.compile(r"\s+\((?:\d+/\d+|-\d+h(?:\d{2})?)\)$")
+
+
+def mission_title(summary: str) -> str:
+    title = summary.strip()
+    while True:
+        cleaned = MISSION_SUFFIX_RE.sub("", title).strip()
+        if cleaned == title:
+            return title
+        title = cleaned
+
+
+def mission_keys(result: ExtractionResult) -> set[str]:
+    return {normalize_text(mission_title(event.summary)) for event in result.events if event.summary.strip()}
+
+
+def mission_titles(result: ExtractionResult) -> list[str]:
+    titles: dict[str, str] = {}
+    for event in result.events:
+        title = mission_title(event.summary)
+        key = normalize_text(title)
+        if key and key not in titles:
+            titles[key] = title
+    return list(titles.values())
+
+
+def same_person_name(first: str, second: str) -> bool:
+    return name_match_score(first, second) >= 0.95
+
+
+def people_sharing_missions(results: list[ExtractionResult], principal_name: str) -> set[str]:
+    principal = next(
+        (result for result in results if same_person_name(result.person_name, principal_name)),
+        None,
+    )
+    if principal is None:
+        return set()
+    principal_missions = mission_keys(principal)
+    return {
+        result.person_name
+        for result in results
+        if mission_keys(result) & principal_missions
+    }
+
+
+def extract_results_for_people(
+    pdf: Path, people: list[str], week: int, year: int
+) -> tuple[list[ExtractionResult], list[str]]:
+    results: list[ExtractionResult] = []
+    errors: list[str] = []
+    available_results = extract_all_plannings(pdf, week, year)
+    for person in people:
+        matches = sorted(
+            (
+                (name_match_score(person, result.person_name), result)
+                for result in available_results
+            ),
+            key=lambda item: item[0],
+            reverse=True,
+        )
+        if not matches or matches[0][0] < 0.72:
+            errors.append(f"{person} : aucune ligne correspondante trouvée.")
+            continue
+        results.append(matches[0][1])
+    return results, errors
+
+
+def people_selection_table(
+    results: list[ExtractionResult], principal_name: str, fields: dict[str, str], errors: list[str]
+) -> str:
+    common_people = {normalize_text(name) for name in people_sharing_missions(results, principal_name)}
+    hidden_fields = [
+        hidden_input("manual_pdf", fields.get("manual_pdf", "")),
+        hidden_input("planning_dir", fields.get("planning_dir", "")),
+        hidden_input("output_dir", fields.get("output_dir", "") or load_settings()["output_dir"]),
+        hidden_input("person", principal_name),
+    ]
+    rows: list[str] = []
+    for index, result in enumerate(results):
+        person_key = normalize_text(result.person_name)
+        is_principal = same_person_name(result.person_name, principal_name)
+        is_common = person_key in common_people
+        checked = " checked" if is_principal else ""
+        principal_attr = "true" if is_principal else "false"
+        common_attr = "true" if is_common else "false"
+        common_label = '<span class="status-badge">Principal</span>' if is_principal else ("Oui" if is_common else "Non")
+        titles = mission_titles(result)
+        missions = " ; ".join(titles[:5]) or "Aucune mission exportable"
+        if len(titles) > 5:
+            missions += " ; ..."
+        rows.append(
+            f"""
+            <tr class="person-row">
+              <td class="event-enabled"><input class="person-choice" type="checkbox"
+                  name="person_select_{index}" value="{html.escape(result.person_name, quote=True)}"
+                  data-common="{common_attr}" data-principal="{principal_attr}"{checked}></td>
+              <td><strong>{html.escape(result.person_name)}</strong></td>
+              <td>{len(result.events)}</td>
+              <td class="mission-list">{html.escape(missions)}</td>
+              <td>{common_label}</td>
+            </tr>
+            """
+        )
+    error_html = ""
+    if errors:
+        error_html = (
+            '<div class="diagnostic-warning"><strong>Techniciens non analysés :</strong><br>'
+            + "<br>".join(html.escape(error) for error in errors)
+            + "</div>"
+        )
+    return f"""
+      <h2>Sélectionner les techniciens</h2>
+      <p class="empty">Le technicien principal est déjà coché. Choisis les autres personnes à inclure.</p>
+      {error_html}
+      <form method="post">
+        {''.join(hidden_fields)}
+        <div class="selection-toolbar">
+          <input class="multi-search" id="people_table_search" type="search" placeholder="Rechercher un technicien..." aria-label="Rechercher un technicien">
+          <button class="ghost" id="select_all_people_table" type="button">Tout sélectionner</button>
+          <button class="ghost" id="clear_people_table" type="button">Tout désélectionner</button>
+          <label class="multi-toggle"><input id="same_mission_toggle" type="checkbox">
+            Cocher les techniciens ayant les mêmes missions que {html.escape(principal_name)}</label>
+        </div>
+        <table>
+          <thead><tr><th>Inclure</th><th>Technicien</th><th>Événements</th><th>Missions</th><th>Mission commune</th></tr></thead>
+          <tbody>{''.join(rows)}</tbody>
+        </table>
+        <div class="actions">
+          <button type="submit" name="action" value="export_multiple">Exporter directement</button>
+          <button class="secondary" type="submit" name="action" value="preview_multiple">Prévisualiser et modifier</button>
+        </div>
+      </form>
+    """
+
+
 def selected_people_from_fields(fields: dict[str, str]) -> list[str]:
+    checked = [
+        value.strip()
+        for key, value in sorted(fields.items())
+        if key.startswith("person_select_") and value.strip()
+    ]
+    if checked:
+        return list(dict.fromkeys(checked))
     raw = fields.get("people_multi_csv", "")
     people = [line.strip() for line in raw.splitlines() if line.strip()]
     return list(dict.fromkeys(people))
@@ -1381,27 +1638,42 @@ def run_generation(fields: dict[str, str]) -> bytes:
         planning_dir_text = str(explicit_pdf.parent)
         save_settings({"planning_dir": planning_dir_text, "output_dir": output_dir_text})
         people = list(cached_people_for_pdf(str(explicit_pdf)))
-        if action == "export_multiple":
+        if action == "choose_multiple":
+            if not selected_person:
+                raise ValueError("Choisis d'abord le technicien principal.")
+            all_results, extraction_errors = extract_results_for_people(explicit_pdf, people, week, year)
+            if not any(same_person_name(result.person_name, selected_person) for result in all_results):
+                raise ValueError("Le technicien principal n'a pas pu être analysé.")
+            content = people_selection_table(all_results, selected_person, fields, extraction_errors)
+            return page_shell(
+                content,
+                people=people,
+                selected_person=selected_person,
+                manual_pdf=manual_pdf,
+                planning_dir=planning_dir_text,
+                output_dir=output_dir_text,
+            )
+
+        if action in {"export_multiple", "preview_multiple"}:
             selected_people = selected_people_from_fields(fields)
             if not selected_people:
                 raise ValueError("Sélectionne au moins un technicien.")
-            output_dir = chosen_output_dir(fields)
-            multiple_results: list[ExtractionResult] = []
-            extraction_errors: list[str] = []
-            for person in selected_people:
-                try:
-                    multiple_results.append(
-                        extract_planning(
-                            Request(person=person, week=week, year=year),
-                            source_dir=explicit_pdf.parent,
-                            explicit_pdf=explicit_pdf,
-                            assume_yes=True,
-                        )
-                    )
-                except Exception as exc:
-                    extraction_errors.append(f"{person} : {exc}")
+            multiple_results, extraction_errors = extract_results_for_people(
+                explicit_pdf, selected_people, week, year
+            )
             if not multiple_results:
-                raise ValueError("Aucun technicien n'a pu être exporté.")
+                raise ValueError("Aucun technicien n'a pu être analysé.")
+            if action == "preview_multiple":
+                content = multi_event_editor(multiple_results, fields, extraction_errors)
+                return page_shell(
+                    content,
+                    people=people,
+                    selected_person=selected_person,
+                    manual_pdf=manual_pdf,
+                    planning_dir=planning_dir_text,
+                    output_dir=output_dir_text,
+                )
+            output_dir = chosen_output_dir(fields)
             paths, zip_path = export_multiple_results(multiple_results, output_dir, week, year)
             path_items = "".join(f"<li><code>{html.escape(str(path))}</code></li>" for path in paths)
             error_block = ""
@@ -1417,6 +1689,27 @@ def run_generation(fields: dict[str, str]) -> bytes:
               <h2>Fichiers créés</h2>
               <ul>{path_items}</ul>
               <p class="import-note">Tu peux ouvrir le ZIP, puis importer chaque fichier ICS dans l'agenda voulu.</p>
+            """
+            save_settings({"planning_dir": planning_dir_text, "output_dir": str(output_dir)})
+            return page_shell(
+                content,
+                people=people,
+                selected_person=selected_person,
+                manual_pdf=manual_pdf,
+                planning_dir=planning_dir_text,
+                output_dir=str(output_dir),
+            )
+
+        if action == "export_multiple_edited":
+            multiple_results = edited_multiple_results_from_fields(fields)
+            output_dir = chosen_output_dir(fields)
+            paths, zip_path = export_multiple_results(multiple_results, output_dir, week, year)
+            path_items = "".join(f"<li><code>{html.escape(str(path))}</code></li>" for path in paths)
+            content = f"""
+              <p class="ok">{len(paths)} fichier(s) ICS modifié(s) généré(s) dans : <code>{html.escape(str(zip_path))}</code></p>
+              <h2>Fichiers créés</h2>
+              <ul>{path_items}</ul>
+              <p class="import-note">Ouvre le ZIP puis importe chaque fichier ICS dans l'agenda voulu.</p>
             """
             save_settings({"planning_dir": planning_dir_text, "output_dir": str(output_dir)})
             return page_shell(

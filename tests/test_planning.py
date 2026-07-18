@@ -227,6 +227,118 @@ def test_multiple_export_writes_safe_ics_files_and_zip(tmp_path: Path) -> None:
         assert sorted(archive.namelist()) == sorted(path.name for path in paths)
 
 
+def extraction_result(person: str, summary: str, description: str = "Description") -> ExtractionResult:
+    event = make_event(20, 9, 0, 17, 0, summary=summary, description=description)
+    return ExtractionResult(
+        Path("planning.pdf"),
+        person,
+        1.0,
+        30,
+        2026,
+        [DayExtraction("Lun", event.start.date(), "", [event])],
+        [],
+    )
+
+
+def test_people_sharing_missions_uses_principal_technician_missions() -> None:
+    results = [
+        extraction_result("DUPONT ALICE", "Hôtel Étoilé (-1h)"),
+        extraction_result("MARTIN BOB", "Hôtel Étoilé (1/2)"),
+        extraction_result("BERNARD CLARA", "Studio Mobile"),
+    ]
+
+    assert planning_ui.people_sharing_missions(results, "Alice Dupont") == {
+        "DUPONT ALICE",
+        "MARTIN BOB",
+    }
+
+
+def test_batch_extraction_returns_multiple_people_from_one_pdf(planning_pdf: Path) -> None:
+    results, errors = planning_ui.extract_results_for_people(
+        planning_pdf,
+        ["DUPONT ALICE", "MARTIN BOB"],
+        30,
+        2026,
+    )
+
+    assert errors == []
+    assert [result.person_name for result in results] == ["DUPONT ALICE", "MARTIN BOB"]
+    assert [len(result.events) for result in results] == [1, 1]
+
+
+def test_multiple_selection_table_checks_only_principal_by_default(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(planning_ui, "settings_path", lambda: tmp_path / "settings.json")
+    results = [
+        extraction_result("DUPONT ALICE", "Hôtel Étoilé (-1h)"),
+        extraction_result("MARTIN BOB", "Hôtel Étoilé"),
+        extraction_result("BERNARD CLARA", "Studio Mobile"),
+    ]
+    fields = {
+        "manual_pdf": "D:/Plannings/S30.pdf",
+        "planning_dir": "D:/Plannings",
+        "output_dir": "D:/Exports",
+    }
+
+    content = planning_ui.people_selection_table(results, "DUPONT ALICE", fields, [])
+
+    assert 'value="DUPONT ALICE"' in content
+    assert 'data-common="true" data-principal="true" checked' in content
+    assert 'value="MARTIN BOB"' in content
+    assert 'data-common="true" data-principal="false"' in content
+    assert 'value="BERNARD CLARA"' in content
+    assert 'data-common="false" data-principal="false"' in content
+    assert 'value="preview_multiple"' in content
+
+
+def test_multiple_preview_keeps_edits_for_each_technician() -> None:
+    fields = {
+        "manual_pdf": "D:/Plannings/S30.pdf",
+        "multi_result_count": "2",
+        "tech_0_edit_person_name": "DUPONT ALICE",
+        "tech_0_edit_pdf": "D:/Plannings/S30.pdf",
+        "tech_0_edit_week": "30",
+        "tech_0_edit_year": "2026",
+        "tech_0_event_count": "1",
+        "tech_0_event_0_enabled": "on",
+        "tech_0_event_0_start_date": "2026-07-20",
+        "tech_0_event_0_end_date": "2026-07-20",
+        "tech_0_event_0_start_time": "09:00",
+        "tech_0_event_0_end_time": "17:00",
+        "tech_0_event_0_summary": "Mission Alice modifiée",
+        "tech_0_event_0_description": "Description Alice modifiée",
+        "tech_1_edit_person_name": "MARTIN BOB",
+        "tech_1_edit_pdf": "D:/Plannings/S30.pdf",
+        "tech_1_edit_week": "30",
+        "tech_1_edit_year": "2026",
+        "tech_1_event_count": "1",
+        "tech_1_event_0_enabled": "on",
+        "tech_1_event_0_start_date": "2026-07-21",
+        "tech_1_event_0_end_date": "2026-07-21",
+        "tech_1_event_0_start_time": "10:00",
+        "tech_1_event_0_end_time": "18:30",
+        "tech_1_event_0_summary": "Mission Bob modifiée",
+        "tech_1_event_0_description": "Description Bob modifiée",
+    }
+
+    results = planning_ui.edited_multiple_results_from_fields(fields)
+
+    assert [result.person_name for result in results] == ["DUPONT ALICE", "MARTIN BOB"]
+    assert [result.events[0].summary for result in results] == [
+        "Mission Alice modifiée",
+        "Mission Bob modifiée",
+    ]
+    assert results[1].events[0].end.strftime("%Y-%m-%d %H:%M") == "2026-07-21 18:30"
+
+
+def test_main_page_exposes_the_three_export_paths(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(planning_ui, "settings_path", lambda: tmp_path / "settings.json")
+    page = planning_ui.page_shell("", people=["DUPONT ALICE"]).decode("utf-8")
+
+    assert 'value="generate"' in page
+    assert 'value="preview"' in page
+    assert 'value="choose_multiple"' in page
+
+
 def test_ics_escapes_french_special_characters_and_is_valid() -> None:
     event = make_event(20, 9, 0, 17, 0, summary="Équipe d'été, côté théâtre; test\\ok")
     result = ExtractionResult(
