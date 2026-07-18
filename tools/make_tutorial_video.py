@@ -41,6 +41,20 @@ def button(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], label: str
     text(draw, ((box[0] + box[2]) // 2, (box[1] + box[3]) // 2), label, 18, fill=(TEAL if light else "white"), bold=True, anchor="mm")
 
 
+def checkbox(draw: ImageDraw.ImageDraw, center: tuple[int, int], checked: bool) -> None:
+    x, y = center
+    draw.rounded_rectangle(
+        (x - 9, y - 9, x + 9, y + 9),
+        radius=3,
+        fill=TEAL if checked else "white",
+        outline=TEAL,
+        width=2,
+    )
+    if checked:
+        draw.line((x - 5, y, x - 1, y + 4), fill="white", width=2)
+        draw.line((x - 1, y + 4, x + 6, y - 5), fill="white", width=2)
+
+
 def base_slide(title: str, step: str) -> tuple[Image.Image, ImageDraw.ImageDraw]:
     image = Image.new("RGB", (WIDTH, HEIGHT), PALE)
     draw = ImageDraw.Draw(image)
@@ -85,8 +99,9 @@ def draw_app_shell(draw: ImageDraw.ImageDraw, pdf: str = "planning-exemple-semai
     text(draw, (385, 481), "⌄", 18, MUTED, False, "mm")
     field(draw, 530, "Exporter vers", r"D:\Exports", "Parcourir")
     button(draw, (24, 635, 145, 680), "Générer ICS", TEAL)
-    button(draw, (155, 635, 280, 680), "Prévisualiser", "white", light=True)
-    text(draw, (24, 730), "Le dernier dossier choisi est mémorisé.", 14, MUTED)
+    button(draw, (155, 635, 405, 680), "Prévisualiser et modifier", "white", light=True)
+    button(draw, (24, 692, 274, 737), "Ajouter des techniciens", "white", light=True)
+    text(draw, (24, 790), "Le dernier dossier choisi est mémorisé.", 14, MUTED)
 
 
 def draw_summary(draw: ImageDraw.ImageDraw, status: str = "ICS généré : D:\\Exports\\Planning_Technicien_S30_2026.ics", title: str = "Résumé") -> None:
@@ -119,7 +134,7 @@ def slide_cover() -> Image.Image:
 
 
 def slide_open() -> Image.Image:
-    image, draw = base_slide("Ouvrir l’application", "1 / 6")
+    image, draw = base_slide("Ouvrir l’application", "1 / 7")
     draw_app_shell(draw)
     draw_summary(draw, "Dossier mémorisé : D:\\Plannings", "Résumé")
     panel(draw, (730, 360, 1635, 590), fill="#f1faf7", outline="#9bcfbd", radius=6)
@@ -130,7 +145,7 @@ def slide_open() -> Image.Image:
 
 
 def slide_pdf() -> Image.Image:
-    image, draw = base_slide("Choisir le PDF à traiter", "2 / 6")
+    image, draw = base_slide("Choisir le PDF à traiter", "2 / 7")
     draw_app_shell(draw, "planning-exemple-semaine.pdf")
     panel(draw, (470, 158, 1880, 845), fill="white", outline=LINE, radius=6)
     text(draw, (500, 205), "PDF trouvés dans ce dossier", 25, NAVY, True)
@@ -147,7 +162,7 @@ def slide_pdf() -> Image.Image:
 
 
 def slide_person() -> Image.Image:
-    image, draw = base_slide("Sélectionner le technicien", "3 / 6")
+    image, draw = base_slide("Sélectionner le technicien principal", "3 / 7")
     draw_app_shell(draw, person="Technicien 1")
     panel(draw, (470, 158, 1880, 845), fill="white", outline=LINE, radius=6)
     text(draw, (500, 205), "Techniciens détectés dans le PDF", 25, NAVY, True)
@@ -158,12 +173,42 @@ def slide_person() -> Image.Image:
         panel(draw, (500, y, 1835, y + 54), fill=("#f1faf7" if index == 0 else "white"), outline=(TEAL if index == 0 else LINE), radius=6)
         text(draw, (530, y + 27), value, 17, INK, index == 0, "lm")
         text(draw, (1780, y + 27), "✓" if index == 0 else "", 22, TEAL, True, "rm")
-    subtitle(draw, "Choisis le technicien à exporter.\nLes dates sont lues dans le PDF sélectionné.")
+    subtitle(draw, "Choisis le technicien principal. Tu peux l’exporter seul\nou utiliser Ajouter des techniciens pour compléter la sélection.")
+    return image
+
+
+def slide_multiple() -> Image.Image:
+    image, draw = base_slide("Ajouter des techniciens", "4 / 7")
+    draw_app_shell(draw, person="Technicien 1")
+    panel(draw, (470, 158, 1880, 845), fill="white", outline=LINE, radius=6)
+    text(draw, (500, 205), "Sélectionner les techniciens", 25, NAVY, True)
+    panel(draw, (500, 240, 1835, 292), fill=SOFT, radius=6)
+    text(draw, (525, 266), "Rechercher un technicien...", 16, MUTED, False, "lm")
+    checkbox(draw, (1030, 266), True)
+    text(draw, (1052, 266), "Cocher les techniciens ayant les mêmes missions", 16, TEAL, True, "lm")
+    headers = [(520, "Inclure"), (665, "Technicien"), (980, "Événements"), (1190, "Missions"), (1670, "Mission commune")]
+    for x, value in headers:
+        text(draw, (x, 335), value, 14, MUTED, True)
+    rows = [
+        (True, "Technicien 1", "4", "Mission A ; Mission B", "Principal"),
+        (True, "Technicien 2", "3", "Mission A", "Oui"),
+        (True, "Technicien 3", "2", "Mission B", "Oui"),
+        (False, "Technicien 4", "1", "Mission C", "Non"),
+    ]
+    for index, row in enumerate(rows):
+        y = 390 + index * 72
+        draw.line((500, y - 25, 1835, y - 25), fill=LINE, width=2)
+        checkbox(draw, (540, y), row[0])
+        for x, value in zip((665, 1010, 1190, 1705), row[1:]):
+            text(draw, (x, y), value, 16, INK, x == 665, "lm")
+    button(draw, (500, 705, 720, 752), "Exporter directement", TEAL)
+    button(draw, (735, 705, 1005, 752), "Prévisualiser et modifier", "white", light=True)
+    subtitle(draw, "Coche les personnes voulues ou sélectionne automatiquement\ncelles qui partagent une mission avec le technicien principal.")
     return image
 
 
 def slide_preview() -> Image.Image:
-    image, draw = base_slide("Prévisualiser et corriger", "4 / 6")
+    image, draw = base_slide("Prévisualiser et corriger", "5 / 7")
     draw_app_shell(draw)
     panel(draw, (470, 158, 1880, 845), fill="white", outline=LINE, radius=6)
     text(draw, (500, 205), "Prévisualisation des événements", 25, NAVY, True)
@@ -187,7 +232,7 @@ def slide_preview() -> Image.Image:
 
 
 def slide_export() -> Image.Image:
-    image, draw = base_slide("Générer le fichier ICS", "5 / 6")
+    image, draw = base_slide("Générer le fichier ICS", "6 / 7")
     draw_app_shell(draw)
     draw_summary(draw, "ICS généré : D:\\Exports\\Planning_Technicien_S30_2026.ics")
     panel(draw, (720, 365, 1605, 620), fill=GREEN, outline="#9bcfbd", radius=6)
@@ -199,7 +244,7 @@ def slide_export() -> Image.Image:
 
 
 def slide_outlook() -> Image.Image:
-    image, draw = base_slide("Importer dans Outlook", "6 / 6")
+    image, draw = base_slide("Importer dans Outlook", "7 / 7")
     draw.rectangle((430, 92, WIDTH, 155), fill="#062551")
     text(draw, (470, 123), "Outlook", 25, "white", True, "lm")
     text(draw, (700, 123), "Calendrier", 17, "#d8e3ef", False, "lm")
@@ -235,7 +280,17 @@ def slide_done() -> Image.Image:
 
 
 def build_frames(folder: Path) -> list[Path]:
-    slides = [slide_cover(), slide_open(), slide_pdf(), slide_person(), slide_preview(), slide_export(), slide_outlook(), slide_done()]
+    slides = [
+        slide_cover(),
+        slide_open(),
+        slide_pdf(),
+        slide_person(),
+        slide_multiple(),
+        slide_preview(),
+        slide_export(),
+        slide_outlook(),
+        slide_done(),
+    ]
     paths: list[Path] = []
     for index, image in enumerate(slides, start=1):
         path = folder / f"frame_{index:02d}.png"
