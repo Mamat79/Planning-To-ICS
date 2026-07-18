@@ -1019,7 +1019,11 @@ def page_shell(
       const submitter = event.submitter;
       if (!submitter) return;
       if (["generate", "preview", "choose_multiple"].includes(submitter.value)) {{
-        submitter.disabled = true;
+        if (mainForm.dataset.submitting === "true") {{
+          event.preventDefault();
+          return;
+        }}
+        mainForm.dataset.submitting = "true";
         submitter.textContent = "Analyse en cours...";
         document.body.classList.add("busy");
       }}

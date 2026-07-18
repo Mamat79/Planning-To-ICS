@@ -337,6 +337,8 @@ def test_main_page_exposes_the_three_export_paths(tmp_path: Path, monkeypatch) -
     assert 'value="generate"' in page
     assert 'value="preview"' in page
     assert 'value="choose_multiple"' in page
+    assert "submitter.disabled = true" not in page
+    assert 'mainForm.dataset.submitting = "true"' in page
 
 
 def test_ics_escapes_french_special_characters_and_is_valid() -> None:
