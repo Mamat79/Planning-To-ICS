@@ -126,8 +126,12 @@ python -m pytest
 Compilation de l'application :
 
 ```powershell
-python -m PyInstaller --noconfirm --clean ".\Planning To ICS.spec"
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean ".\Planning To ICS.spec"
 ```
+
+Le paquet Windows distribué est construit avec Python 3.12 installé hors du Microsoft Store. Cette version a été validée pour le démarrage de l'exécutable autonome.
 
 Compilation de l'installateur :
 

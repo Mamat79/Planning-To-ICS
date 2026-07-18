@@ -22,3 +22,7 @@ pdftoppm -png .\output\pdf\Planning_to_ICS_V1.08_Notice.pdf .\tmp\pdfs\notice
 
 La construction Windows utilise PyInstaller puis Inno Setup. La construction
 macOS est exécutée par GitHub Actions sur macOS et produit un DMG.
+
+Le build Windows de diffusion doit utiliser l'environnement Python 3.12 du
+projet (`.venv`). Un build réalisé avec l'interpréteur Python du Microsoft Store
+ne doit pas être publié sans un test de lancement de l'exécutable installé.

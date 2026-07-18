@@ -8,6 +8,7 @@
 - prévisualisation et modification séparées pour chaque technicien avant l'export multiple ;
 - lecture groupée du PDF : 65 techniciens analysés en quelques secondes au lieu de relire le document pour chaque personne ;
 - notice PDF intégrée à l'installateur et publiée séparément ;
+- paquet Windows reconstruit avec Python 3.12 autonome et testé après installation ;
 - correctif urgent : activation des boutons et du mode sombre après correction du JavaScript de l'interface ;
 - glisser-déposer fonctionnel dans WebView/Chrome, avec copie du PDF dans le dossier des plannings ;
 - ajout du glisser-déposer des PDF ;
