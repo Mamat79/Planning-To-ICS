@@ -945,6 +945,22 @@ def _pause_suffix(minutes: int) -> str:
     return f"(-{hours}h{remainder:02d})" if remainder else f"(-{hours}h)"
 
 
+def format_event_description(summary: str) -> str:
+    """Return a concise mission description without the PDF timing columns."""
+    pause_minutes = _summary_pause_minutes(summary)
+    description = _base_event_summary(summary)
+    description = re.sub(r"(?:\s*/\s*){2,}", " / ", description)
+    description = re.sub(r"\s*/\s*((?:19|20)\d{2})\b", r" \1", description)
+    description = re.sub(r"\s+", " ", description).strip(" /\t")
+    if not description:
+        description = "Planning Radio France"
+    if pause_minutes:
+        hours, remainder = divmod(pause_minutes, 60)
+        pause = f"(-{hours})" if remainder == 0 else f"(-{hours}h{remainder:02d})"
+        description = f"{description} {pause}"
+    return description
+
+
 def merge_identical_events(events: list[WorkEvent]) -> list[WorkEvent]:
     """Merge identical vacations from one planning column, including overnight ends."""
     if not events:
@@ -1232,16 +1248,26 @@ def extraction_result_from_block(
         warnings.extend(day_warnings)
 
     person_name = block.name.replace("\n", " ")
+    cleaned_days = []
+    for day in strip_person_from_events(days, person_name):
+        included = merge_identical_events(day.included)
+        cleaned_days.append(
+            replace(
+                day,
+                included=[
+                    replace(event, description=format_event_description(event.summary))
+                    for event in included
+                ],
+            )
+        )
+
     return ExtractionResult(
         pdf=pdf,
         person_name=person_name,
         matched_score=score,
         week=request.week,
         year=request.year,
-        days=[
-            replace(day, included=merge_identical_events(day.included))
-            for day in strip_person_from_events(days, person_name)
-        ],
+        days=cleaned_days,
         warnings=warnings,
     )
 

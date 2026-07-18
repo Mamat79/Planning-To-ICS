@@ -20,6 +20,7 @@ from planning_to_ics import (
     build_uid,
     diagnose_events,
     extract_planning,
+    format_event_description,
     merge_identical_events,
     DayExtraction,
     write_ics_file,
@@ -49,6 +50,15 @@ def test_people_and_events_are_extracted_from_a_real_pdf_table(planning_pdf: Pat
     assert result.events[0].start.strftime("%Y-%m-%d %H:%M") == "2026-07-20 09:00"
     assert result.events[-1].end.strftime("%Y-%m-%d %H:%M") == "2026-07-20 18:00"
     assert "(-1h)" in result.events[0].summary
+    assert result.events[0].description == "Hôtel Étoilé (-1)"
+
+
+def test_description_keeps_only_mission_and_compact_pause() -> None:
+    assert format_event_description(
+        "PROJET SONO HALL RF / / FESTIVAL PRESENCES / 2026 (-1h)"
+    ) == "PROJET SONO HALL RF / FESTIVAL PRESENCES 2026 (-1)"
+    assert format_event_description("Mission de nuit (-1h30)") == "Mission de nuit (-1h30)"
+    assert format_event_description("Mission sans pause") == "Mission sans pause"
 
 
 def test_people_cache_refreshes_when_same_pdf_path_is_replaced(planning_pdf: Path, tmp_path: Path) -> None:

@@ -2,6 +2,7 @@
 
 ## V1.08
 
+- descriptions simplifiées : mission et pause uniquement, sans horaires ni durée totale issus du PDF ;
 - trois parcours distincts : export direct, prévisualisation modifiable et ajout de techniciens ;
 - tableau à cases à cocher pour sélectionner plusieurs techniciens ;
 - sélection automatique des techniciens partageant une mission avec le technicien principal ;
