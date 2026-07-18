@@ -14,7 +14,9 @@ import sys
 import threading
 import time as time_module
 import urllib.parse
+import urllib.request
 import webbrowser
+import zipfile
 from datetime import date, datetime, time
 from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -27,6 +29,7 @@ from planning_to_ics import (
     OUTPUT_DIR,
     SOURCE_DIR,
     DayExtraction,
+    diagnose_events,
     ExtractionResult,
     Request,
     WorkEvent,
@@ -86,6 +89,54 @@ def save_settings(updates: dict[str, str]) -> dict[str, str]:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
     return settings
+
+
+def reset_settings() -> dict[str, str]:
+    path = settings_path()
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+    return default_settings()
+
+
+def import_settings(data: object) -> dict[str, str]:
+    if not isinstance(data, dict):
+        raise ValueError("Fichier de réglages invalide.")
+    updates = {
+        key: value.strip()
+        for key, value in data.items()
+        if key in SETTINGS_KEYS and isinstance(value, str) and value.strip()
+    }
+    if not updates:
+        raise ValueError("Aucun dossier valide dans le fichier de réglages.")
+    return save_settings(updates)
+
+
+def version_key(value: str) -> tuple[int, ...]:
+    numbers = re.findall(r"\d+", value)
+    return tuple(int(number) for number in numbers) or (0,)
+
+
+def check_for_update() -> dict[str, object]:
+    request = urllib.request.Request(
+        "https://api.github.com/repos/Mamat79/Planning-To-ICS/releases/latest",
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "Planning-To-ICS"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        latest = str(payload.get("tag_name", ""))
+        release_url = str(payload.get("html_url", "https://github.com/Mamat79/Planning-To-ICS/releases"))
+        return {
+            "current": APP_VERSION,
+            "latest": latest,
+            "release_url": release_url,
+            "update_available": version_key(latest) > version_key(APP_VERSION),
+            "message": "Ouvre la page des Releases pour télécharger la nouvelle version.",
+        }
+    except Exception as exc:
+        return {"current": APP_VERSION, "latest": "", "update_available": False, "error": str(exc)}
 
 
 def find_free_port(preferred: int) -> int:
@@ -267,6 +318,17 @@ def page_shell(
       font-size: 10px;
       margin-top: 2px;
     }}
+    .header-actions {{
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }}
+    .header-actions button {{
+      min-height: 30px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 500;
+    }}
     main {{
       display: grid;
       grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
@@ -433,6 +495,108 @@ def page_shell(
     .pdf-status.loading {{ border-color: #b9c8dc; color: #3f5f84; }}
     .pdf-status.compatible {{ border-color: #9bcfbd; color: #174f3f; background: #f1faf7; }}
     .pdf-status.unsupported, .pdf-status.error {{ border-color: #f0b2ad; color: var(--error); background: #fff7f6; }}
+    .drop-zone {{
+      margin: -4px 0 16px;
+      padding: 12px;
+      border: 1px dashed #9ca9b7;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .7);
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      transition: border-color .15s, background .15s;
+    }}
+    .drop-zone.active {{
+      border-color: var(--accent);
+      background: #eef7f5;
+      color: var(--accent-strong);
+    }}
+    .multi-toggle {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: -4px 0 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }}
+    .multi-toggle input {{ width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }}
+    .multi-panel {{
+      margin: 0 0 16px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .75);
+    }}
+    .multi-panel[hidden] {{ display: none; }}
+    .multi-panel select {{ min-height: 105px; margin-bottom: 8px; }}
+    .compact-actions {{ display: flex; gap: 6px; flex-wrap: wrap; }}
+    .compact-actions button {{ min-height: 30px; padding: 5px 8px; font-size: 12px; }}
+    .settings-tools {{
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }}
+    .settings-tools button {{ min-height: 32px; padding: 5px 8px; font-size: 12px; }}
+    .diagnostic-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: 8px;
+      margin: 0 0 16px;
+    }}
+    .diagnostic-card {{
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--soft);
+    }}
+    .diagnostic-card strong {{ display: block; font-size: 18px; color: var(--text); }}
+    .diagnostic-card span {{ color: var(--muted); font-size: 12px; }}
+    .diagnostic-warning {{
+      margin: 0 0 16px;
+      padding: 10px 12px;
+      border: 1px solid #e3c98d;
+      border-radius: 6px;
+      background: #fff9e8;
+      color: #765b16;
+      font-size: 13px;
+      line-height: 1.4;
+    }}
+    .toast {{
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 10;
+      max-width: 360px;
+      padding: 11px 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #202124;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+      font-size: 13px;
+    }}
+    .toast[hidden] {{ display: none; }}
+    button:disabled {{ opacity: .65; cursor: wait; }}
+    body.dark {{
+      --text: #edf1f5;
+      --muted: #b5bec8;
+      --line: #47515c;
+      --soft: #252b31;
+      --accent: #5cc4af;
+      --accent-strong: #8be1cc;
+      background: #1b2025;
+      color: var(--text);
+    }}
+    body.dark header, body.dark section, body.dark pre, body.dark table,
+    body.dark select, body.dark input[type="text"], body.dark input[type="date"],
+    body.dark input[type="time"], body.dark textarea {{ background: #252b31; color: var(--text); }}
+    body.dark header {{ border-color: var(--line); }}
+    body.dark form {{ background: #20262b; border-color: var(--line); }}
+    body.dark th {{ background: #303840; color: var(--muted); }}
+    body.dark .multi-panel, body.dark .diagnostic-card, body.dark .drop-zone {{ background: #2b3239; }}
+    body.dark button.secondary, body.dark button.ghost {{ background: #252b31; color: var(--accent); }}
+    body.dark .import-note {{ background: #203a35; color: #bfe9dd; }}
     .import-note {{
       margin: 16px 0 0;
       padding: 11px 13px;
@@ -471,10 +635,14 @@ def page_shell(
 <body>
   <header>
     <h1>Planning to ICS <span class="version">{APP_VERSION}</span></h1>
-    <div class="signature"><span class="signature-main">by Mamat</span><span class="signature-agents">et ses agents</span></div>
+    <div class="header-actions">
+      <button class="ghost" id="theme_toggle" type="button">Mode sombre</button>
+      <button class="ghost" id="check_update" type="button">Vérifier la version</button>
+      <div class="signature"><span class="signature-main">by Mamat</span><span class="signature-agents">et ses agents</span></div>
+    </div>
   </header>
   <main>
-    <form method="post">
+    <form id="main_form" method="post">
       <label for="planning_dir">Dossier des plannings</label>
       <div class="field-row">
         <input id="planning_dir" name="planning_dir" type="text" value="{planning_dir_value}">
@@ -492,11 +660,22 @@ def page_shell(
         <button class="secondary" id="browse_pdf" type="button">Parcourir</button>
       </div>
       <div class="pdf-status" id="pdf_info" role="status">Choisis un PDF pour vérifier son contenu.</div>
+      <div class="drop-zone" id="drop_zone">Glisse-dépose un PDF ici</div>
 
       <label for="person">Technicien</label>
       <select id="person" name="person" required>
         {person_options(people, selected_person)}
       </select>
+      <label class="multi-toggle"><input id="multi_mode" type="checkbox"> Exporter plusieurs techniciens</label>
+      <div class="multi-panel" id="multi_panel" hidden>
+        <select id="people_multi" multiple aria-label="Techniciens à exporter"></select>
+        <input id="people_multi_csv" name="people_multi_csv" type="hidden" value="">
+        <div class="compact-actions">
+          <button class="ghost" id="select_all_people" type="button">Tout sélectionner</button>
+          <button class="ghost" id="clear_people" type="button">Tout désélectionner</button>
+          <button class="secondary" type="submit" name="action" value="export_multiple">Exporter la sélection</button>
+        </div>
+      </div>
 
       <label for="output_dir">Exporter vers</label>
       <div class="field-row">
@@ -510,6 +689,12 @@ def page_shell(
         <button class="ghost" type="submit" name="action" value="quit" formnovalidate>Quitter l'application</button>
       </div>
       <p class="import-note">Après génération, importe le fichier ICS dans ton agenda Outlook, Google Agenda ou autre calendrier. L'application crée le fichier, elle ne l'ajoute pas automatiquement à l'agenda.</p>
+      <div class="settings-tools">
+        <button class="ghost" id="export_settings" type="button">Exporter mes réglages</button>
+        <button class="ghost" id="import_settings" type="button">Importer mes réglages</button>
+        <button class="ghost" id="reset_settings" type="button">Réinitialiser</button>
+        <input id="settings_file" type="file" accept="application/json,.json" hidden>
+      </div>
     </form>
     <section>
       {content}
@@ -525,6 +710,53 @@ def page_shell(
     const browsePlanningDirButton = document.getElementById("browse_planning_dir");
     const browsePdfButton = document.getElementById("browse_pdf");
     const browseOutputButton = document.getElementById("browse_output");
+    const mainForm = document.getElementById("main_form");
+    const dropZone = document.getElementById("drop_zone");
+    const multiMode = document.getElementById("multi_mode");
+    const multiPanel = document.getElementById("multi_panel");
+    const multiPeople = document.getElementById("people_multi");
+    const multiPeopleCsv = document.getElementById("people_multi_csv");
+    const settingsFile = document.getElementById("settings_file");
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.hidden = true;
+    document.body.appendChild(toast);
+
+    function showToast(message) {{
+      toast.textContent = message;
+      toast.hidden = false;
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => {{ toast.hidden = true; }}, 4200);
+    }}
+
+    const savedTheme = localStorage.getItem("planning-to-ics-theme");
+    if (savedTheme === "dark") document.body.classList.add("dark");
+    document.getElementById("theme_toggle").addEventListener("click", () => {{
+      document.body.classList.toggle("dark");
+      localStorage.setItem("planning-to-ics-theme", document.body.classList.contains("dark") ? "dark" : "light");
+    }});
+
+    document.getElementById("check_update").addEventListener("click", async (event) => {{
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = "Vérification...";
+      try {{
+        const response = await fetch("/api/update");
+        const data = await response.json();
+        if (data.update_available) {{
+          showToast(`Nouvelle version disponible : ${{data.latest}}. ${{data.message}}`);
+        }} else if (data.latest) {{
+          showToast(`Cette version est à jour (${{data.latest}}).`);
+        }} else {{
+          showToast(data.error || "Impossible de vérifier la version.");
+        }}
+      }} catch (error) {{
+        showToast("Vérification impossible hors connexion.");
+      }} finally {{
+        button.disabled = false;
+        button.textContent = "Vérifier la version";
+      }}
+    }});
 
     async function rememberSettings(updates) {{
       try {{
@@ -570,6 +802,7 @@ def page_shell(
     async function loadPeople() {{
       const pdf = manualPdfInput.value.trim();
       personSelect.innerHTML = '<option value="">Chargement...</option>';
+      multiPeople.innerHTML = "";
       pdfInfo.className = "pdf-status loading";
       pdfInfo.textContent = "Analyse du PDF en cours...";
       if (!pdf) {{
@@ -593,6 +826,10 @@ def page_shell(
           option.value = person;
           option.textContent = person;
           personSelect.appendChild(option);
+          const multiOption = document.createElement("option");
+          multiOption.value = person;
+          multiOption.textContent = person;
+          multiPeople.appendChild(multiOption);
         }}
       }} catch (error) {{
         personSelect.innerHTML = '<option value="">Choisir...</option>';
@@ -646,6 +883,108 @@ def page_shell(
     browsePlanningDirButton.addEventListener("click", () => choose("planning_directory"));
     browsePdfButton.addEventListener("click", () => choose("pdf"));
     browseOutputButton.addEventListener("click", () => choose("directory"));
+    multiMode.addEventListener("change", () => {{
+      multiPanel.hidden = !multiMode.checked;
+      personSelect.required = !multiMode.checked;
+    }});
+    multiPeople.addEventListener("change", () => {{
+      multiPeopleCsv.value = Array.from(multiPeople.selectedOptions).map(option => option.value).join("\n");
+    }});
+    document.getElementById("select_all_people").addEventListener("click", () => {{
+      Array.from(multiPeople.options).forEach(option => option.selected = true);
+      multiPeople.dispatchEvent(new Event("change"));
+    }});
+    document.getElementById("clear_people").addEventListener("click", () => {{
+      Array.from(multiPeople.options).forEach(option => option.selected = false);
+      multiPeople.dispatchEvent(new Event("change"));
+    }});
+
+    function droppedPath(dataTransfer) {{
+      const file = dataTransfer.files && dataTransfer.files[0];
+      if (file && file.path) return file.path;
+      const uri = (dataTransfer.getData("text/uri-list") || "").split("\n").find(value => value && !value.startsWith("#"));
+      if (!uri) return "";
+      const decoded = decodeURIComponent(uri.trim());
+      if (!decoded.startsWith("file://")) return decoded;
+      return decoded.slice(7).replace(/^\/([A-Za-z]:)/, "$1");
+    }}
+    ["dragenter", "dragover"].forEach(name => dropZone.addEventListener(name, event => {{
+      event.preventDefault();
+      dropZone.classList.add("active");
+    }}));
+    ["dragleave", "drop"].forEach(name => dropZone.addEventListener(name, event => {{
+      event.preventDefault();
+      dropZone.classList.remove("active");
+    }}));
+    dropZone.addEventListener("drop", async event => {{
+      const path = droppedPath(event.dataTransfer);
+      if (!path || !path.toLowerCase().endsWith(".pdf")) {{
+        showToast("Dépose un fichier PDF.");
+        return;
+      }}
+      manualPdfInput.value = path;
+      await loadPdfs();
+      await loadPeople();
+    }});
+
+    mainForm.addEventListener("submit", event => {{
+      const submitter = event.submitter;
+      if (!submitter) return;
+      if (submitter.value === "export_multiple") {{
+        multiPeopleCsv.value = Array.from(multiPeople.selectedOptions).map(option => option.value).join("\n");
+      }}
+      if (["generate", "preview", "export_multiple", "export_edited"].includes(submitter.value)) {{
+        submitter.disabled = true;
+        submitter.textContent = "Analyse en cours...";
+        document.body.classList.add("busy");
+      }}
+    }});
+
+    document.getElementById("export_settings").addEventListener("click", async () => {{
+      const response = await fetch("/api/settings");
+      const data = await response.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], {{type: "application/json"}});
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "planning-to-ics-settings.json";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }});
+    document.getElementById("import_settings").addEventListener("click", () => settingsFile.click());
+    settingsFile.addEventListener("change", async () => {{
+      const file = settingsFile.files && settingsFile.files[0];
+      if (!file) return;
+      try {{
+        const imported = JSON.parse(await file.text());
+        const response = await fetch("/api/settings", {{
+          method: "POST",
+          headers: {{"Content-Type": "application/json"}},
+          body: JSON.stringify({{action: "import", settings: imported}})
+        }});
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        planningDirInput.value = data.planning_dir;
+        outputInput.value = data.output_dir;
+        await loadPdfs();
+        showToast("Réglages importés.");
+      }} catch (error) {{
+        showToast("Fichier de réglages invalide.");
+      }} finally {{ settingsFile.value = ""; }}
+    }});
+    document.getElementById("reset_settings").addEventListener("click", async () => {{
+      if (!window.confirm("Réinitialiser les dossiers mémorisés ?")) return;
+      const response = await fetch("/api/settings", {{
+        method: "POST",
+        headers: {{"Content-Type": "application/json"}},
+        body: JSON.stringify({{action: "reset"}})
+      }});
+      const data = await response.json();
+      planningDirInput.value = data.planning_dir;
+      outputInput.value = data.output_dir;
+      manualPdfInput.value = "";
+      await loadPdfs();
+      showToast("Réglages réinitialisés.");
+    }});
   </script>
 </body>
 </html>"""
@@ -706,6 +1045,33 @@ def hidden_input(name: str, value: str) -> str:
     return f'<input type="hidden" name="{html.escape(name, quote=True)}" value="{html.escape(value, quote=True)}">'
 
 
+def diagnostics_html(result: ExtractionResult) -> str:
+    diagnostics = diagnose_events(result.events)
+    warning_details = [
+        *diagnostics.duplicate_details,
+        *diagnostics.overlap_details,
+        *diagnostics.collision_details,
+    ]
+    warning_html = ""
+    if warning_details:
+        warning_html = (
+            '<div class="diagnostic-warning"><strong>À vérifier :</strong><br>'
+            + "<br>".join(html.escape(detail) for detail in warning_details[:8])
+            + ("<br>..." if len(warning_details) > 8 else "")
+            + "</div>"
+        )
+    return f"""
+      <div class="diagnostic-grid">
+        <div class="diagnostic-card"><strong>{diagnostics.event_count}</strong><span>événements</span></div>
+        <div class="diagnostic-card"><strong>{sum(bool(day.ignored_reason) for day in result.days)}</strong><span>jours ignorés</span></div>
+        <div class="diagnostic-card"><strong>{diagnostics.overnight_count}</strong><span>événement(s) de nuit</span></div>
+        <div class="diagnostic-card"><strong>{diagnostics.duplicate_count}</strong><span>doublon(s)</span></div>
+        <div class="diagnostic-card"><strong>{diagnostics.overlap_count}</strong><span>chevauchement(s)</span></div>
+      </div>
+      {warning_html}
+    """
+
+
 def event_editor(result: ExtractionResult, fields: dict[str, str], summary_html: str) -> str:
     hidden_fields = [
         hidden_input("manual_pdf", fields.get("manual_pdf", "")),
@@ -751,6 +1117,7 @@ def event_editor(result: ExtractionResult, fields: dict[str, str], summary_html:
 
     return f"""
       <h2>Prévisualisation</h2>
+      {diagnostics_html(result)}
       <pre>{summary_html}</pre>
       <h2 style="margin-top: 22px;">Événements modifiables</h2>
       <form method="post">
@@ -847,6 +1214,40 @@ def export_result(result: ExtractionResult, output_dir: Path) -> Path:
     return ics_path
 
 
+def selected_people_from_fields(fields: dict[str, str]) -> list[str]:
+    raw = fields.get("people_multi_csv", "")
+    people = [line.strip() for line in raw.splitlines() if line.strip()]
+    return list(dict.fromkeys(people))
+
+
+def export_multiple_results(
+    results: list[ExtractionResult], output_dir: Path, week: int, year: int
+) -> tuple[list[Path], Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+    reserved: set[Path] = set()
+    for result in results:
+        path = output_ics_path(output_dir, result)
+        if path in reserved:
+            counter = 2
+            while True:
+                candidate = path.with_name(f"{path.stem}_{counter}{path.suffix}")
+                if candidate not in reserved:
+                    path = candidate
+                    break
+                counter += 1
+        reserved.add(path)
+        write_ics_file(path, result)
+        write_log(output_dir, result, path)
+        paths.append(path)
+
+    zip_path = output_dir / f"Planning_ICS_S{week:02d}_{year}.zip"
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for path in paths:
+            archive.write(path, arcname=path.name)
+    return paths, zip_path
+
+
 def open_export_target(ics_path: Path, show_folder: bool) -> Path:
     if not ics_path.is_file() or ics_path.suffix.lower() != ".ics":
         raise FileNotFoundError(f"Fichier ICS introuvable: {ics_path}")
@@ -913,6 +1314,53 @@ def run_generation(fields: dict[str, str]) -> bytes:
         planning_dir_text = str(explicit_pdf.parent)
         save_settings({"planning_dir": planning_dir_text, "output_dir": output_dir_text})
         people = list(cached_people_for_pdf(str(explicit_pdf)))
+        if action == "export_multiple":
+            selected_people = selected_people_from_fields(fields)
+            if not selected_people:
+                raise ValueError("Sélectionne au moins un technicien.")
+            output_dir = chosen_output_dir(fields)
+            multiple_results: list[ExtractionResult] = []
+            extraction_errors: list[str] = []
+            for person in selected_people:
+                try:
+                    multiple_results.append(
+                        extract_planning(
+                            Request(person=person, week=week, year=year),
+                            source_dir=explicit_pdf.parent,
+                            explicit_pdf=explicit_pdf,
+                            assume_yes=True,
+                        )
+                    )
+                except Exception as exc:
+                    extraction_errors.append(f"{person} : {exc}")
+            if not multiple_results:
+                raise ValueError("Aucun technicien n'a pu être exporté.")
+            paths, zip_path = export_multiple_results(multiple_results, output_dir, week, year)
+            path_items = "".join(f"<li><code>{html.escape(str(path))}</code></li>" for path in paths)
+            error_block = ""
+            if extraction_errors:
+                error_block = (
+                    '<div class="diagnostic-warning"><strong>Techniciens non exportés :</strong><br>'
+                    + "<br>".join(html.escape(error) for error in extraction_errors)
+                    + "</div>"
+                )
+            content = f"""
+              <p class="ok">{len(paths)} fichier(s) ICS généré(s) et regroupé(s) dans : <code>{html.escape(str(zip_path))}</code></p>
+              {error_block}
+              <h2>Fichiers créés</h2>
+              <ul>{path_items}</ul>
+              <p class="import-note">Tu peux ouvrir le ZIP, puis importer chaque fichier ICS dans l'agenda voulu.</p>
+            """
+            save_settings({"planning_dir": planning_dir_text, "output_dir": str(output_dir)})
+            return page_shell(
+                content,
+                people=people,
+                selected_person=selected_person,
+                manual_pdf=manual_pdf,
+                planning_dir=planning_dir_text,
+                output_dir=str(output_dir),
+            )
+
         if not selected_person:
             raise ValueError("Choisis un technicien.")
 
@@ -1184,6 +1632,18 @@ class PlanningHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/choose":
             self.respond(render_choose_api(parsed.query), content_type="application/json; charset=utf-8")
             return
+        if parsed.path == "/api/settings":
+            self.respond(
+                json.dumps(load_settings(), ensure_ascii=False).encode("utf-8"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        if parsed.path == "/api/update":
+            self.respond(
+                json.dumps(check_for_update(), ensure_ascii=False).encode("utf-8"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
         self.send_error(404)
 
     def do_POST(self) -> None:
@@ -1193,12 +1653,18 @@ class PlanningHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/settings":
             try:
                 data = json.loads(body.decode("utf-8") or "{}")
-                updates = {
-                    key: str(value)
-                    for key, value in data.items()
-                    if key in SETTINGS_KEYS and isinstance(value, str) and value.strip()
-                }
-                payload = save_settings(updates)
+                action = data.get("action") if isinstance(data, dict) else None
+                if action == "reset":
+                    payload = reset_settings()
+                elif action == "import":
+                    payload = import_settings(data.get("settings"))
+                else:
+                    updates = {
+                        key: str(value)
+                        for key, value in data.items()
+                        if key in SETTINGS_KEYS and isinstance(value, str) and value.strip()
+                    }
+                    payload = save_settings(updates)
             except Exception as exc:
                 payload = {"error": str(exc)}
             self.respond(

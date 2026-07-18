@@ -16,6 +16,7 @@ from planning_to_ics import (
     Request,
     WorkEvent,
     build_ics,
+    diagnose_events,
     extract_planning,
     merge_identical_events,
     DayExtraction,
@@ -148,6 +149,42 @@ def test_merge_requires_same_business_information() -> None:
 
     assert len(merge_identical_events([make_event(20, 9, 0, 12, 0), different_title])) == 2
     assert len(merge_identical_events([make_event(20, 9, 0, 12, 0), different_details])) == 2
+
+
+def test_event_diagnostics_detects_duplicates_overlaps_and_overnight() -> None:
+    tz = ZoneInfo("Europe/Paris")
+    first = WorkEvent(
+        "Lun",
+        "Mission",
+        "Mission",
+        datetime(2026, 7, 20, 21, tzinfo=tz),
+        datetime(2026, 7, 21, 1, tzinfo=tz),
+        "Mission",
+    )
+    duplicate = WorkEvent(
+        "Lun",
+        "Mission",
+        "Mission",
+        first.start,
+        first.end,
+        "Mission",
+    )
+    overlap = WorkEvent(
+        "Lun",
+        "Autre mission",
+        "Autre mission",
+        datetime(2026, 7, 20, 23, tzinfo=tz),
+        datetime(2026, 7, 21, 2, tzinfo=tz),
+        "Autre mission",
+    )
+
+    diagnostics = diagnose_events([first, duplicate, overlap])
+
+    assert diagnostics.event_count == 3
+    assert diagnostics.overnight_count == 3
+    assert diagnostics.duplicate_count == 1
+    assert diagnostics.overlap_count == 3
+    assert diagnostics.collision_count == 0
 
 
 def test_ics_escapes_french_special_characters_and_is_valid() -> None:

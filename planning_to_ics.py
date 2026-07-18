@@ -199,6 +199,72 @@ class ExtractionResult:
         return [event for day in self.days for event in day.included]
 
 
+@dataclass(frozen=True)
+class EventDiagnostics:
+    event_count: int
+    overnight_count: int
+    duplicate_count: int
+    overlap_count: int
+    collision_count: int
+    duplicate_details: tuple[str, ...] = ()
+    overlap_details: tuple[str, ...] = ()
+    collision_details: tuple[str, ...] = ()
+
+
+def _diagnostic_event_label(event: WorkEvent) -> str:
+    return f"{event.day_label} {event.start:%d/%m %H:%M}-{event.end:%H:%M} {event.summary}"
+
+
+def diagnose_events(events: Iterable[WorkEvent]) -> EventDiagnostics:
+    """Summarize duplicate, overlapping, overnight and ambiguous events."""
+    items = sorted(events, key=lambda event: (event.start, event.end, normalize_text(event.summary)))
+    duplicate_groups: dict[tuple[object, ...], list[WorkEvent]] = {}
+    slot_groups: dict[tuple[datetime, datetime], list[WorkEvent]] = {}
+    for event in items:
+        duplicate_key = (
+            event.start,
+            event.end,
+            normalize_text(event.summary),
+            normalize_text(event.description),
+        )
+        duplicate_groups.setdefault(duplicate_key, []).append(event)
+        slot_groups.setdefault((event.start, event.end), []).append(event)
+
+    duplicate_details: list[str] = []
+    for group in duplicate_groups.values():
+        if len(group) > 1:
+            duplicate_details.append(f"{len(group)}x {_diagnostic_event_label(group[0])}")
+
+    collision_details: list[str] = []
+    for group in slot_groups.values():
+        summaries = {normalize_text(event.summary) for event in group}
+        if len(group) > 1 and len(summaries) > 1:
+            collision_details.append(
+                f"Même créneau : {' / '.join(event.summary for event in group[:3])}"
+            )
+
+    overlap_details: list[str] = []
+    for index, left in enumerate(items):
+        for right in items[index + 1 :]:
+            if right.start >= left.end:
+                break
+            if left.start < right.end and right.start < left.end:
+                overlap_details.append(
+                    f"Chevauchement : {_diagnostic_event_label(left)} / {_diagnostic_event_label(right)}"
+                )
+
+    return EventDiagnostics(
+        event_count=len(items),
+        overnight_count=sum(event.end.date() != event.start.date() for event in items),
+        duplicate_count=sum(max(len(group) - 1, 0) for group in duplicate_groups.values()),
+        overlap_count=len(overlap_details),
+        collision_count=len(collision_details),
+        duplicate_details=tuple(duplicate_details),
+        overlap_details=tuple(overlap_details),
+        collision_details=tuple(collision_details),
+    )
+
+
 def strip_accents(value: str) -> str:
     decomposed = unicodedata.normalize("NFD", value)
     return "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
