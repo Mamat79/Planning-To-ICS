@@ -2,6 +2,8 @@
 
 ## V1.08
 
+- correctif urgent : activation des boutons et du mode sombre après correction du JavaScript de l'interface ;
+- glisser-déposer fonctionnel dans WebView/Chrome, avec copie du PDF dans le dossier des plannings ;
 - ajout du glisser-déposer des PDF ;
 - export de plusieurs techniciens, avec recherche, sélection globale, un ICS par personne et un ZIP ;
 - diagnostic des événements, doublons, chevauchements et vacations de nuit ;

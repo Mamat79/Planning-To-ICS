@@ -753,11 +753,14 @@ def page_shell(
       showToast.timer = window.setTimeout(() => {{ toast.hidden = true; }}, 4200);
     }}
 
-    const savedTheme = localStorage.getItem("planning-to-ics-theme");
+    let savedTheme = "";
+    try {{ savedTheme = localStorage.getItem("planning-to-ics-theme") || ""; }} catch (error) {{}}
     if (savedTheme === "dark") document.body.classList.add("dark");
     document.getElementById("theme_toggle").addEventListener("click", () => {{
       document.body.classList.toggle("dark");
-      localStorage.setItem("planning-to-ics-theme", document.body.classList.contains("dark") ? "dark" : "light");
+      try {{
+        localStorage.setItem("planning-to-ics-theme", document.body.classList.contains("dark") ? "dark" : "light");
+      }} catch (error) {{}}
     }});
 
     document.getElementById("check_update").addEventListener("click", async (event) => {{
@@ -912,7 +915,7 @@ def page_shell(
       personSelect.required = !multiMode.checked;
     }});
     multiPeople.addEventListener("change", () => {{
-      multiPeopleCsv.value = Array.from(multiPeople.selectedOptions).map(option => option.value).join("\n");
+      multiPeopleCsv.value = Array.from(multiPeople.selectedOptions).map(option => option.value).join("\\n");
     }});
     peopleSearch.addEventListener("input", () => {{
       const query = peopleSearch.value.trim().toLocaleLowerCase();
@@ -932,7 +935,7 @@ def page_shell(
     function droppedPath(dataTransfer) {{
       const file = dataTransfer.files && dataTransfer.files[0];
       if (file && file.path) return file.path;
-      const uri = (dataTransfer.getData("text/uri-list") || "").split("\n").find(value => value && !value.startsWith("#"));
+      const uri = (dataTransfer.getData("text/uri-list") || "").split("\\n").find(value => value && !value.startsWith("#"));
       if (!uri) return "";
       const decoded = decodeURIComponent(uri.trim());
       if (!decoded.startsWith("file://")) return decoded;
@@ -946,7 +949,41 @@ def page_shell(
       event.preventDefault();
       dropZone.classList.remove("active");
     }}));
+    async function uploadDroppedPdf(file) {{
+      if (!file || !file.name.toLowerCase().endsWith(".pdf")) {{
+        showToast("Dépose un fichier PDF.");
+        return;
+      }}
+      dropZone.textContent = "Import du PDF en cours...";
+      try {{
+        const params = new URLSearchParams({{
+          planning_dir: planningDirInput.value.trim(),
+          filename: file.name
+        }});
+        const response = await fetch(`/api/drop-pdf?${{params.toString()}}`, {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/pdf" }},
+          body: file
+        }});
+        const data = await response.json();
+        if (!response.ok || data.error) throw new Error(data.error || "Import impossible.");
+        manualPdfInput.value = data.path;
+        planningDirInput.value = data.planning_dir || planningDirInput.value;
+        await loadPdfs();
+        await loadPeople();
+        showToast(`PDF importé : ${{data.name || file.name}}`);
+      }} catch (error) {{
+        showToast(error.message || "Le PDF n'a pas pu être importé.");
+      }} finally {{
+        dropZone.textContent = "Glisse-dépose un PDF ici";
+      }}
+    }}
     dropZone.addEventListener("drop", async event => {{
+      const file = event.dataTransfer.files && event.dataTransfer.files[0];
+      if (file) {{
+        await uploadDroppedPdf(file);
+        return;
+      }}
       const path = droppedPath(event.dataTransfer);
       if (!path || !path.toLowerCase().endsWith(".pdf")) {{
         showToast("Dépose un fichier PDF.");
@@ -961,7 +998,7 @@ def page_shell(
       const submitter = event.submitter;
       if (!submitter) return;
       if (submitter.value === "export_multiple") {{
-        multiPeopleCsv.value = Array.from(multiPeople.selectedOptions).map(option => option.value).join("\n");
+        multiPeopleCsv.value = Array.from(multiPeople.selectedOptions).map(option => option.value).join("\\n");
       }}
       if (["generate", "preview", "export_multiple", "export_edited"].includes(submitter.value)) {{
         submitter.disabled = true;
@@ -1645,6 +1682,38 @@ def render_choose_api(query: str) -> bytes:
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
 
+MAX_DROPPED_PDF_BYTES = 100 * 1024 * 1024
+
+
+def save_dropped_pdf(filename: str, data: bytes, destination_dir: str) -> Path:
+    """Copy a browser-provided PDF into the selected planning folder."""
+    if not data:
+        raise ValueError("Le fichier PDF est vide.")
+    if len(data) > MAX_DROPPED_PDF_BYTES:
+        raise ValueError("Le PDF dépasse la taille maximale autorisée de 100 Mo.")
+
+    source_name = Path(urllib.parse.unquote(filename)).name
+    source_path = Path(source_name)
+    if source_path.suffix.lower() != ".pdf":
+        raise ValueError("Seuls les fichiers PDF peuvent être déposés ici.")
+    stem = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", source_path.stem).strip(" .") or "planning"
+    target_dir = Path(destination_dir).expanduser() if destination_dir.strip() else Path.cwd()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / f"{stem}.pdf"
+    if target.exists():
+        if target.read_bytes() == data:
+            return target
+        counter = 2
+        while True:
+            candidate = target_dir / f"{stem}_importe_{counter}.pdf"
+            if not candidate.exists():
+                target = candidate
+                break
+            counter += 1
+    target.write_bytes(data)
+    return target
+
+
 class PlanningHandler(BaseHTTPRequestHandler):
     server_version = "PlanningToICS/1.0"
 
@@ -1679,6 +1748,33 @@ class PlanningHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         length = int(self.headers.get("Content-Length", "0"))
+        if parsed.path == "/api/drop-pdf":
+            if length > MAX_DROPPED_PDF_BYTES:
+                self.rfile.read(length)
+                payload = {"error": "Le PDF dépasse la taille maximale autorisée de 100 Mo."}
+                self.respond(
+                    json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                    status=413,
+                    content_type="application/json; charset=utf-8",
+                )
+                return
+            body = self.rfile.read(length)
+            try:
+                params = urllib.parse.parse_qs(parsed.query)
+                destination_dir = params.get("planning_dir", [load_settings()["planning_dir"]])[0]
+                filename = params.get("filename", ["planning.pdf"])[0]
+                path = save_dropped_pdf(filename, body, destination_dir)
+                payload = {"path": str(path), "name": path.name, "planning_dir": str(path.parent)}
+                status = 200
+            except Exception as exc:
+                payload = {"error": str(exc)}
+                status = 400
+            self.respond(
+                json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                status=status,
+                content_type="application/json; charset=utf-8",
+            )
+            return
         body = self.rfile.read(length)
         if parsed.path == "/api/settings":
             try:

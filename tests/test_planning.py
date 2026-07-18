@@ -284,6 +284,16 @@ def test_version_key_compares_release_numbers() -> None:
     assert planning_ui.version_key("v1.10") > planning_ui.version_key("V1.8")
 
 
+def test_dropped_pdf_is_copied_to_planning_folder(tmp_path: Path) -> None:
+    first = planning_ui.save_dropped_pdf("PREVI SEM 30.pdf", b"%PDF-1.7", str(tmp_path))
+    second = planning_ui.save_dropped_pdf("PREVI SEM 30.pdf", b"different", str(tmp_path))
+
+    assert first.name == "PREVI SEM 30.pdf"
+    assert second.name == "PREVI SEM 30_importe_2.pdf"
+    assert first.read_bytes() == b"%PDF-1.7"
+    assert second.read_bytes() == b"different"
+
+
 def test_pdf_list_includes_nested_and_uppercase_extensions(tmp_path: Path) -> None:
     nested = tmp_path / "Sous-dossier"
     nested.mkdir()

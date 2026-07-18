@@ -126,3 +126,6 @@ Compilation de l'installateur :
 ```
 
 Les installateurs compilés ne sont pas versionnés dans Git. Ils sont joints aux Releases GitHub afin de garder le dépôt source léger.
+
+Le glisser-déposer copie le PDF dans le dossier des plannings sélectionné afin
+qu'il reste disponible dans la liste au prochain lancement.
