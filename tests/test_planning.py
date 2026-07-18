@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import urllib.parse
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -16,6 +17,7 @@ from planning_to_ics import (
     Request,
     WorkEvent,
     build_ics,
+    build_uid,
     diagnose_events,
     extract_planning,
     merge_identical_events,
@@ -75,6 +77,26 @@ def test_ics_is_outlook_compatible_and_keeps_accents(planning_pdf: Path, tmp_pat
     assert "SUMMARY:Hôtel Étoilé" in text
     assert "\r\n" in text
     assert all(len(line.encode("utf-8")) <= 75 for line in build_ics(result).splitlines())
+
+
+def test_uid_is_stable_when_pdf_is_moved() -> None:
+    event = make_event(20, 9, 0, 17, 0)
+    first = ExtractionResult(Path("C:/one/planning.pdf"), "DUPONT ALICE", 1.0, 30, 2026, [], [])
+    moved = ExtractionResult(Path("D:/another/planning.pdf"), "DUPONT ALICE", 1.0, 30, 2026, [], [])
+
+    assert build_uid(first, event) == build_uid(moved, event)
+
+
+def test_uid_changes_for_title_schedule_or_person() -> None:
+    event = make_event(20, 9, 0, 17, 0)
+    base = ExtractionResult(Path("planning.pdf"), "DUPONT ALICE", 1.0, 30, 2026, [], [])
+    title_changed = make_event(20, 9, 0, 17, 0, summary="Autre mission")
+    time_changed = make_event(20, 10, 0, 17, 0)
+    other_person = ExtractionResult(Path("planning.pdf"), "MARTIN BOB", 1.0, 30, 2026, [], [])
+
+    assert build_uid(base, event) != build_uid(base, title_changed)
+    assert build_uid(base, event) != build_uid(base, time_changed)
+    assert build_uid(base, event) != build_uid(other_person, event)
 
 
 def make_event(
@@ -185,6 +207,24 @@ def test_event_diagnostics_detects_duplicates_overlaps_and_overnight() -> None:
     assert diagnostics.duplicate_count == 1
     assert diagnostics.overlap_count == 3
     assert diagnostics.collision_count == 0
+
+
+def test_multiple_export_writes_safe_ics_files_and_zip(tmp_path: Path) -> None:
+    event = make_event(20, 9, 0, 17, 0)
+    results = [
+        ExtractionResult(Path("planning.pdf"), "DUPONT ALICE", 1.0, 30, 2026, [DayExtraction("Lun", event.start.date(), "", [event])], []),
+        ExtractionResult(Path("planning.pdf"), "MARTIN BOB", 1.0, 30, 2026, [DayExtraction("Lun", event.start.date(), "", [event])], []),
+    ]
+
+    paths, zip_path = planning_ui.export_multiple_results(results, tmp_path, 30, 2026)
+
+    assert [path.name for path in paths] == [
+        "Planning_Alice_Dupont_S30_2026.ics",
+        "Planning_Bob_Martin_S30_2026.ics",
+    ]
+    assert zip_path.name == "Planning_ICS_S30_2026.zip"
+    with zipfile.ZipFile(zip_path) as archive:
+        assert sorted(archive.namelist()) == sorted(path.name for path in paths)
 
 
 def test_ics_escapes_french_special_characters_and_is_valid() -> None:

@@ -1331,17 +1331,19 @@ def utc_stamp(value: datetime) -> str:
 
 
 def build_uid(result: ExtractionResult, event: WorkEvent) -> str:
+    """Build an ICS identifier that survives PDF moves and repeated exports."""
     key = "|".join(
         [
-            str(result.pdf),
-            result.person_name,
-            event.summary,
+            normalize_text(result.person_name),
+            str(result.year),
+            f"{result.week:02d}",
             event.start.isoformat(),
             event.end.isoformat(),
+            normalize_text(event.summary),
         ]
     )
     digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:24]
-    return f"{digest}@planning-radiofrance-local"
+    return f"{digest}@planning-to-ics.local"
 
 
 def build_ics(result: ExtractionResult) -> str:
