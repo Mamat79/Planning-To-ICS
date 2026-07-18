@@ -53,7 +53,9 @@ L'application s'ouvre dans une fenêtre dédiée avec :
 - la liste des techniciens du PDF choisi ;
 - un diagnostic indiquant si le planning est compatible, scanné ou non reconnu ;
 - le choix du dossier d'export du `.ics` ;
-- la recherche et l'export de plusieurs techniciens, avec un ICS par personne et un ZIP regroupé ;
+- un tableau de sélection pour ajouter plusieurs techniciens, avec recherche et cases à cocher ;
+- la sélection automatique des techniciens travaillant sur au moins une même mission que le technicien principal ;
+- un ICS par personne et un ZIP regroupé lors d'un export multiple ;
 - un diagnostic des événements, doublons, chevauchements et vacations de nuit ;
 - le glisser-déposer d'un PDF ;
 - un bouton de prévisualisation ;
@@ -66,13 +68,21 @@ L'application s'ouvre dans une fenêtre dédiée avec :
 
 Le dossier des plannings et le dossier d'export sont mémorisés entre deux lancements.
 
-Après `Prévisualiser`, les événements extraits apparaissent dans un tableau modifiable. Tu peux décocher un événement, changer le résumé, les dates, les heures ou la description, puis cliquer sur `Exporter ICS modifié`.
+Trois parcours sont disponibles :
+
+1. `Générer ICS` exporte directement le technicien choisi.
+2. `Prévisualiser et modifier` affiche ses événements dans un tableau modifiable avant l'export.
+3. `Ajouter des techniciens` ouvre un tableau de sélection. Le technicien principal est déjà coché ; il est possible d'ajouter manuellement d'autres personnes ou de cocher automatiquement celles qui partagent au moins une mission avec lui.
+
+Après une prévisualisation simple ou multiple, chaque événement peut être décoché. Le résumé, les dates, les heures et la description restent modifiables avant l'export. En mode multiple, chaque technicien dispose de son propre tableau.
 
 Une fois le fichier `.ics` généré, il faut l'importer dans l'agenda voulu. L'application crée le fichier ICS, mais elle ne l'ajoute pas automatiquement dans Outlook, Google Agenda ou un autre calendrier.
 
 ## Tutoriel vidéo
 
 Tutoriel vidéo sous-titré : [télécharger le tutoriel V1.08](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_Tutoriel.mp4).
+
+Notice PDF : [télécharger la notice rapide V1.08](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_Notice.pdf).
 
 L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visible. Fermer la fenêtre arrête complètement l'application.
 
@@ -122,6 +132,7 @@ python -m PyInstaller --noconfirm --clean ".\Planning To ICS.spec"
 Compilation de l'installateur :
 
 ```powershell
+python .\tools\make_user_guide.py
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" ".\installer\PlanningToICS.iss"
 ```
 

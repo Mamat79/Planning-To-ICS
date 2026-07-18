@@ -5,6 +5,7 @@ dist/
 _internal/
 tmp/
 installer-output/*
+output/
 *.spec.bak
 assets/*.icns
 assets/*.iconset/

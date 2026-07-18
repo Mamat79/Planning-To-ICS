@@ -65,14 +65,20 @@ jobs:
       - name: Build application bundle
         run: pyinstaller --noconfirm --clean "Planning To ICS.mac.spec"
 
+      - name: Build user guide
+        run: python tools/make_user_guide.py
+
       - name: Create DMG installer
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist/dmg
+          cp -R "dist/Planning To ICS.app" "dist/dmg/Planning To ICS.app"
+          cp "output/pdf/Planning_to_ICS_V1.08_Notice.pdf" dist/dmg/
+          ln -s /Applications dist/dmg/Applications
           hdiutil create \
             -volname "Planning To ICS" \
-            -srcfolder "dist/Planning To ICS.app" \
+            -srcfolder "dist/dmg" \
             -ov \
             -format UDZO \
             "dist/Planning_to_ICS_V${{ steps.release.outputs.version }}_macOS.dmg"
@@ -81,7 +87,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Planning_to_ICS_V${{ steps.release.outputs.version }}_macOS
-          path: dist/Planning_to_ICS_V${{ steps.release.outputs.version }}_macOS.dmg
+          path: |
+            dist/Planning_to_ICS_V${{ steps.release.outputs.version }}_macOS.dmg
+            output/pdf/Planning_to_ICS_V1.08_Notice.pdf
 
       - name: Upload installer to release
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -95,3 +103,4 @@ jobs:
             gh release create "$tag" --verify-tag --title "Planning To ICS ${tag#v}" --notes "Paquet macOS de Planning To ICS."
           fi
           gh release upload "$tag" "dist/Planning_to_ICS_V${{ steps.release.outputs.version }}_macOS.dmg" --clobber
+          gh release upload "$tag" "output/pdf/Planning_to_ICS_V1.08_Notice.pdf" --clobber

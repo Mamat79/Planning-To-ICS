@@ -31,6 +31,7 @@ Name: "desktopicon"; Description: "Créer un raccourci sur le bureau"; GroupDesc
 [Files]
 Source: "..\dist\Planning to ICS\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\output\pdf\Planning_to_ICS_V1.08_Notice.pdf"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon

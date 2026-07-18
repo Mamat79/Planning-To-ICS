@@ -2,6 +2,12 @@
 
 ## V1.08
 
+- trois parcours distincts : export direct, prévisualisation modifiable et ajout de techniciens ;
+- tableau à cases à cocher pour sélectionner plusieurs techniciens ;
+- sélection automatique des techniciens partageant une mission avec le technicien principal ;
+- prévisualisation et modification séparées pour chaque technicien avant l'export multiple ;
+- lecture groupée du PDF : 65 techniciens analysés en quelques secondes au lieu de relire le document pour chaque personne ;
+- notice PDF intégrée à l'installateur et publiée séparément ;
 - correctif urgent : activation des boutons et du mode sombre après correction du JavaScript de l'interface ;
 - glisser-déposer fonctionnel dans WebView/Chrome, avec copie du PDF dans le dossier des plannings ;
 - ajout du glisser-déposer des PDF ;
