@@ -137,6 +137,11 @@ begin
   ScanUninstallRoot(HKLM);
 end;
 
+function SeparateInstallRequested(): Boolean;
+begin
+  Result := Pos('/INSTALLSEPARATE', Uppercase(GetCmdTail())) > 0;
+end;
+
 function InitializeSetup(): Boolean;
 var
   Choice: Integer;
@@ -145,7 +150,7 @@ begin
   InstallMode := 0;
   ScanExistingInstalls();
 
-  if CmdLineParamExists('/INSTALLSEPARATE') then
+  if SeparateInstallRequested() then
   begin
     InstallMode := 1;
     exit;
