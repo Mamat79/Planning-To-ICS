@@ -1,5 +1,5 @@
 #define MyAppName "Planning to ICS"
-#define MyAppVersion "1.07"
+#define MyAppVersion "1.08"
 #define MyAppPublisher "Mamat"
 #define MyAppExeName "Planning to ICS.exe"
 
@@ -15,7 +15,7 @@ DisableDirPage=no
 DisableProgramGroupPage=no
 PrivilegesRequired=lowest
 OutputDir=..\installer-output
-OutputBaseFilename=Planning_to_ICS_V1.07_Setup
+OutputBaseFilename=Planning_to_ICS_V1.08_Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

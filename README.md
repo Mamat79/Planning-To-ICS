@@ -1,4 +1,4 @@
-# Planning to ICS V1.07
+# Planning to ICS V1.08
 
 Application locale Windows et macOS pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
 
@@ -9,14 +9,14 @@ Le projet a commencé avec des scripts manuels, de l'OCR et des traitements de f
 
 ## Télécharger et installer
 
-Le téléchargement le plus simple est ici : [Télécharger l'installateur Windows V1.07](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.07/Planning_to_ICS_V1.07_Setup.exe).
+Le téléchargement le plus simple est ici : [Télécharger l'installateur Windows V1.08](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_Setup.exe).
 
 Si le téléchargement direct ne démarre pas :
 
 1. Ouvrir la [page des Releases GitHub](https://github.com/Mamat79/Planning-To-ICS/releases).
-2. Cliquer sur `v1.07` dans la liste.
+2. Cliquer sur `v1.08` dans la liste.
 3. Descendre jusqu'à la rubrique **Assets**.
-4. Cliquer sur `Planning_to_ICS_V1.07_Setup.exe`.
+4. Cliquer sur `Planning_to_ICS_V1.08_Setup.exe`.
 5. Ouvrir le fichier téléchargé pour lancer l'installation.
 
 L'installateur contient l'application compilée et ses dépendances. Python n'est pas nécessaire sur le PC cible.
@@ -33,7 +33,7 @@ Si une version de Planning to ICS ou Planning To ICS est déjà installée, l'as
 
 ### macOS
 
-Télécharger le paquet [Planning_to_ICS_V1.07_macOS.dmg](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.07/Planning_to_ICS_V1.07_macOS.dmg).
+Télécharger le paquet [Planning_to_ICS_V1.08_macOS.dmg](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_macOS.dmg).
 
 1. Ouvrir le fichier `.dmg` téléchargé.
 2. Faire glisser `Planning To ICS` dans le dossier **Applications**.
@@ -53,11 +53,16 @@ L'application s'ouvre dans une fenêtre dédiée avec :
 - la liste des techniciens du PDF choisi ;
 - un diagnostic indiquant si le planning est compatible, scanné ou non reconnu ;
 - le choix du dossier d'export du `.ics` ;
+- la recherche et l'export de plusieurs techniciens, avec un ICS par personne et un ZIP regroupé ;
+- un diagnostic des événements, doublons, chevauchements et vacations de nuit ;
+- le glisser-déposer d'un PDF ;
 - un bouton de prévisualisation ;
 - la modification des événements après prévisualisation ;
 - un bouton de génération ICS ;
 - des boutons pour ouvrir l'ICS ou afficher son dossier après génération ;
 - un bouton `Quitter l'application` et une fermeture complète avec la croix de la fenêtre.
+- un mode sombre et un bouton de vérification de la dernière version publiée ;
+- l'export, l'import et la réinitialisation des réglages mémorisés.
 
 Le dossier des plannings et le dossier d'export sont mémorisés entre deux lancements.
 
@@ -67,7 +72,7 @@ Une fois le fichier `.ics` généré, il faut l'importer dans l'agenda voulu. L'
 
 ## Tutoriel vidéo
 
-Tutoriel vidéo sous-titré : [télécharger le tutoriel V1.07](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.07/Planning_to_ICS_V1.07_Tutoriel.mp4).
+Tutoriel vidéo sous-titré : [télécharger le tutoriel V1.08](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_Tutoriel.mp4).
 
 L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visible. Fermer la fenêtre arrête complètement l'application.
 

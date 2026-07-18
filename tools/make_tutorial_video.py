@@ -47,7 +47,7 @@ def base_slide(title: str, step: str) -> tuple[Image.Image, ImageDraw.ImageDraw]
     draw.rectangle((0, 0, WIDTH, 92), fill="#fbfbfc")
     draw.line((0, 91, WIDTH, 91), fill=LINE, width=2)
     text(draw, (48, 44), "Planning To ICS", 31, NAVY, True, "lm")
-    text(draw, (300, 44), "V1.07", 16, TEAL, False, "lm")
+    text(draw, (300, 44), "V1.08", 16, TEAL, False, "lm")
     text(draw, (WIDTH - 48, 37), "by Mamat", 17, MUTED, False, "rm")
     text(draw, (WIDTH - 48, 60), "et ses agents", 11, MUTED, False, "rm")
     text(draw, (WIDTH - 48, 77), step, 14, MUTED, False, "rm")
@@ -107,7 +107,7 @@ def draw_summary(draw: ImageDraw.ImageDraw, status: str = "ICS généré : D:\\E
 
 
 def slide_cover() -> Image.Image:
-    image, draw = base_slide("Générer un planning Outlook en quelques clics", "Tutoriel V1.07")
+    image, draw = base_slide("Générer un planning Outlook en quelques clics", "Tutoriel V1.08")
     draw_app_shell(draw)
     draw_summary(draw, "Prêt à traiter : planning-exemple-semaine.pdf")
     panel(draw, (735, 355, 1600, 690), fill="#f1faf7", outline="#9bcfbd", radius=6)

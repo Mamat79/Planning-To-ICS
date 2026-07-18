@@ -44,7 +44,7 @@ from planning_to_ics import (
     write_log,
 )
 
-APP_VERSION = "V1.07"
+APP_VERSION = "V1.08"
 SETTINGS_KEYS = {"planning_dir", "output_dir"}
 APP_WINDOW: Any | None = None
 
