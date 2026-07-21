@@ -1,6 +1,10 @@
 # Planning to ICS V1.08
 
-Application locale Windows et macOS pour générer des fichiers calendrier `.ics` Outlook depuis les plannings PDF hebdomadaires Radio France.
+Application locale pour Windows et macOS permettant de générer des fichiers calendrier .ics compatibles Outlook à partir des plannings PDF hebdomadaires RF-Ext.
+
+Il s'agit d'une application métier très spécifique, conçue pour le format des plannings utilisés dans mon travail. Le projet est public afin d'en faciliter l'accès à mes collègues, mais si vous ne travaillez pas avec ce type de planning, il y a peu de chances qu'il vous soit utile.
+
+En revanche, n'hésitez pas à récupérer le code source pour l'adapter à vos propres besoins. Si votre format de planning est différent, quelques modifications devraient vous permettre de le faire fonctionner dans votre environnement.
 
 
 ## Origine du projet
