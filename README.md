@@ -37,7 +37,7 @@ Si une version de Planning to ICS ou Planning To ICS est déjà installée, l'as
 
 ### macOS
 
-Le paquet macOS V1.09 sera ajouté à la même Release après sa compilation sur macOS.
+Télécharger le paquet [Planning_to_ICS_V1.09_macOS.dmg](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.09/Planning_to_ICS_V1.09_macOS.dmg).
 
 1. Ouvrir le fichier `.dmg` téléchargé.
 2. Faire glisser `Planning To ICS` dans le dossier **Applications**.
