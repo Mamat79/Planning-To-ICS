@@ -4,7 +4,12 @@ a = Analysis(
     ['planning_native.py'],
     pathex=[],
     binaries=[],
-    datas=[('assets\\planning-to-ics.ico', 'assets'), ('assets\\planning-to-ics.png', 'assets')],
+    datas=[
+        ('assets\\planning-to-ics.ico', 'assets'),
+        ('assets\\planning-to-ics.png', 'assets'),
+        ('assets\\planning-to-ics.ico', '.'),
+        ('output\\pdf\\Planning_to_ICS_V2.0_Notice.pdf', '.'),
+    ],
     hiddenimports=['tzdata'],
     hookspath=[],
     hooksconfig={},

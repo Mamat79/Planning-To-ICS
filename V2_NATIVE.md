@@ -18,6 +18,7 @@ test sur le PC de développement et ne doit pas être publiée avant validation.
 - export d'un ICS par technicien accompagné d'un ZIP ;
 - sélection de plusieurs PDF pour réunir plusieurs semaines dans un ICS ;
 - mode sombre ;
+- notice PDF accessible depuis le menu `Aide` ;
 - import, export et réinitialisation des réglages ;
 - ouverture de l'ICS ou de son dossier après génération.
 

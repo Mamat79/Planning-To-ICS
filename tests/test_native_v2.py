@@ -48,6 +48,13 @@ def test_native_window_is_v2_and_starts_without_pdf(
     window = MainWindow()
     assert window.windowTitle() == "Planning to ICS V2.0"
     assert window.findChild(planning_native.QLabel, "signatureFader").text() == "-------[]--"
+    help_actions = [
+        action.text()
+        for menu_action in window.menuBar().actions()
+        if (menu := menu_action.menu()) is not None
+        for action in menu.actions()
+    ]
+    assert "Ouvrir la notice" in help_actions
     assert window.pdf_combo.count() == 1
     assert "Aucun PDF" in window.analysis.toPlainText()
     window.close()

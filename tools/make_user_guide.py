@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 from reportlab.lib import colors
@@ -29,6 +30,7 @@ LINE = colors.HexColor("#D7DEE5")
 SOFT = colors.HexColor("#F3F6F8")
 PALE_TEAL = colors.HexColor("#E8F5F1")
 WHITE = colors.white
+GUIDE_VERSION = "V2.0"
 
 
 def styles() -> dict[str, ParagraphStyle]:
@@ -192,7 +194,7 @@ def draw_page(canvas, document) -> None:
     canvas.line(20 * mm, 15 * mm, width - 20 * mm, 15 * mm)
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(MUTED)
-    canvas.drawString(20 * mm, 9.5 * mm, "Planning to ICS V1.09")
+    canvas.drawString(20 * mm, 9.5 * mm, f"Planning to ICS {GUIDE_VERSION}")
     canvas.drawCentredString(width / 2, 9.5 * mm, "By Mamat")
     canvas.setFont("Helvetica", 6.5)
     canvas.drawCentredString(width / 2, 6.5 * mm, "et ses agents")
@@ -201,7 +203,9 @@ def draw_page(canvas, document) -> None:
     canvas.restoreState()
 
 
-def build_guide(output: Path) -> Path:
+def build_guide(output: Path, version: str = "V2.0") -> Path:
+    global GUIDE_VERSION
+    GUIDE_VERSION = version
     output.parent.mkdir(parents=True, exist_ok=True)
     guide_styles = styles()
     document = SimpleDocTemplate(
@@ -211,7 +215,7 @@ def build_guide(output: Path) -> Path:
         leftMargin=21 * mm,
         topMargin=18 * mm,
         bottomMargin=21 * mm,
-        title="Notice Planning to ICS V1.09",
+        title=f"Notice Planning to ICS {version}",
         author="Mamat et ses agents",
         subject="Générer puis importer un planning ICS",
     )
@@ -219,7 +223,7 @@ def build_guide(output: Path) -> Path:
     story = [
         Spacer(1, 15 * mm),
         Paragraph("Planning to ICS", guide_styles["title"]),
-        Paragraph("Notice rapide - V1.09", guide_styles["subtitle"]),
+        Paragraph(f"Notice rapide - {version}", guide_styles["subtitle"]),
         callout(
             "<b>But :</b> choisir un planning PDF, vérifier les vacations d'un ou plusieurs "
             "techniciens, générer les fichiers ICS, puis les importer dans l'agenda voulu.",
@@ -268,8 +272,8 @@ def build_guide(output: Path) -> Path:
         Spacer(1, 4 * mm),
         Paragraph("Plusieurs semaines", guide_styles["h2"]),
         Paragraph(
-            "Cliquer sur <b>Choisir plusieurs PDF</b>, sélectionner les plannings hebdomadaires, "
-            "choisir le technicien principal puis cliquer sur <b>Plusieurs semaines</b>. "
+            "Choisir le technicien principal puis cliquer sur <b>Plusieurs semaines</b>. "
+            "Cocher les plannings hebdomadaires dans la fenêtre de sélection. "
             "Chaque semaine peut être corrigée avant la création d'un seul fichier ICS.",
             guide_styles["body"],
         ),
@@ -353,7 +357,7 @@ def build_guide(output: Path) -> Path:
         Spacer(1, 5 * mm),
         Paragraph("Ouverture directe", guide_styles["h2"]),
         Paragraph(
-            "Dans Planning to ICS, le bouton <b>Ouvrir dans Outlook / agenda</b> ouvre le "
+            "Après l'export, le bouton <b>Ouvrir l'ICS</b> ouvre le "
             "fichier avec l'application de calendrier définie par défaut. Un double-clic sur "
             "le fichier ICS utilise la même méthode.",
             guide_styles["body"],
@@ -395,10 +399,17 @@ def main() -> int:
         "output",
         nargs="?",
         type=Path,
-        default=Path("output/pdf/Planning_to_ICS_V1.09_Notice.pdf"),
+        default=Path("output/pdf/Planning_to_ICS_V2.0_Notice.pdf"),
+    )
+    parser.add_argument(
+        "--version",
+        default="",
+        help="Version affichée dans la notice (déduite du nom de fichier si omise).",
     )
     args = parser.parse_args()
-    print(build_guide(args.output).resolve())
+    inferred = re.search(r"_V([^_]+)_Notice", args.output.name, re.IGNORECASE)
+    version = args.version.strip() or (f"V{inferred.group(1)}" if inferred else "V2.0")
+    print(build_guide(args.output, version=version).resolve())
     return 0
 
 

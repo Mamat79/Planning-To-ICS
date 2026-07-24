@@ -112,7 +112,9 @@ QPushButton#primary:hover { background: #0f665b; }
 QPushButton:disabled { color: #8b989d; border-color: #ccd3d6; background: #edf0f1; }
 QHeaderView::section { background: #e9eef0; color: #26373d; padding: 7px; border: 0; border-bottom: 1px solid #ccd6d9; font-weight: 600; }
 QTabBar::tab { padding: 8px 14px; }
-QStatusBar { background: #edf1f2; }
+QMenuBar, QMenu { background: #f5f7f8; color: #172229; }
+QMenuBar::item:selected, QMenu::item:selected { background: #dcebe7; color: #10242b; }
+QStatusBar { background: #edf1f2; color: #172229; }
 """
 
 DARK_STYLESHEET = """
@@ -139,6 +141,7 @@ QPushButton:disabled { color: #69777c; border-color: #3b4448; background: #24292
 QHeaderView::section { background: #2b3236; color: #dfe7e9; padding: 7px; border: 0; border-bottom: 1px solid #49545a; font-weight: 600; }
 QTabBar::tab { padding: 8px 14px; }
 QMenuBar, QMenu, QStatusBar { background: #252b2f; color: #e7ecee; }
+QMenuBar::item:selected, QMenu::item:selected { background: #344147; color: white; }
 """
 
 
@@ -630,10 +633,14 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.dark_action)
 
         help_menu = self.menuBar().addMenu("&Aide")
+        notice_action = QAction("Ouvrir la notice", self)
+        notice_action.triggered.connect(self.open_notice)
         github_action = QAction("Ouvrir le dépôt GitHub", self)
         github_action.triggered.connect(lambda: webbrowser.open(GITHUB_URL))
         about_action = QAction(f"À propos de {APP_NAME}", self)
         about_action.triggered.connect(self.show_about)
+        help_menu.addAction(notice_action)
+        help_menu.addSeparator()
         help_menu.addAction(github_action)
         help_menu.addAction(about_action)
 
@@ -1188,6 +1195,24 @@ class MainWindow(QMainWindow):
             "Application de bureau native pour convertir les plannings PDF en ICS."
             "<br><br><i>by Mamat<br><small>et ses agents</small></i>",
         )
+
+    def open_notice(self) -> None:
+        filename = f"Planning_to_ICS_{APP_VERSION}_Notice.pdf"
+        candidates = [
+            resource_path(filename),
+            Path(__file__).resolve().parent / "output" / "pdf" / filename,
+        ]
+        notice = next((path for path in candidates if path.is_file()), None)
+        if notice is None:
+            self.show_error(
+                "La notice locale est introuvable. Réinstallez l'application "
+                "ou ouvrez la page GitHub du projet."
+            )
+            return
+        try:
+            open_path(notice)
+        except Exception as exc:
+            self.show_error(str(exc))
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         urls = event.mimeData().urls()
