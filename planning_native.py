@@ -99,6 +99,7 @@ QLabel#title { font-size: 17pt; font-weight: 700; color: #10242b; }
 QLabel#version { color: #50656e; font-size: 9pt; }
 QLabel#signature { color: #536970; font-style: italic; }
 QLabel#agents { color: #70838a; font-size: 8pt; font-style: italic; }
+QLabel#signatureFader { color: #8a999e; font-family: "Consolas"; font-size: 7pt; }
 QLabel#sectionTitle { font-size: 13pt; font-weight: 700; }
 QLineEdit, QComboBox, QPlainTextEdit, QListWidget, QTableWidget, QDateTimeEdit {
   background: white; border: 1px solid #bdcbd0; border-radius: 4px; padding: 5px;
@@ -124,6 +125,7 @@ QLabel#title { font-size: 17pt; font-weight: 700; color: #f2f7f8; }
 QLabel#version { color: #a9bbc2; font-size: 9pt; }
 QLabel#signature { color: #b6c5ca; font-style: italic; }
 QLabel#agents { color: #8ea1a8; font-size: 8pt; font-style: italic; }
+QLabel#signatureFader { color: #71848b; font-family: "Consolas"; font-size: 7pt; }
 QLabel#sectionTitle { font-size: 13pt; font-weight: 700; }
 QLineEdit, QComboBox, QPlainTextEdit, QListWidget, QTableWidget, QDateTimeEdit {
   background: #15191c; color: #e7ecee; border: 1px solid #4c5a60; border-radius: 4px; padding: 5px;
@@ -655,8 +657,13 @@ class MainWindow(QMainWindow):
         signature.setObjectName("signature")
         agents = QLabel("et ses agents")
         agents.setObjectName("agents")
+        signature_fader = QLabel("-------[]--")
+        signature_fader.setObjectName("signatureFader")
         signature_box.addWidget(signature, alignment=Qt.AlignmentFlag.AlignRight)
         signature_box.addWidget(agents, alignment=Qt.AlignmentFlag.AlignRight)
+        signature_box.addWidget(
+            signature_fader, alignment=Qt.AlignmentFlag.AlignRight
+        )
         header.addLayout(signature_box)
         root.addLayout(header)
 

@@ -47,6 +47,7 @@ def test_native_window_is_v2_and_starts_without_pdf(
     monkeypatch.setattr(planning_native, "save_settings", lambda updates: updates)
     window = MainWindow()
     assert window.windowTitle() == "Planning to ICS V2.0"
+    assert window.findChild(planning_native.QLabel, "signatureFader").text() == "-------[]--"
     assert window.pdf_combo.count() == 1
     assert "Aucun PDF" in window.analysis.toPlainText()
     window.close()
