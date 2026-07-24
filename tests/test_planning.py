@@ -354,6 +354,7 @@ def test_main_page_exposes_the_three_export_paths(tmp_path: Path, monkeypatch) -
     assert 'value="choose_multiple"' in page
     assert "Choisir plusieurs PDF" in page
     assert "Évite le glisser-déposer" in page
+    assert 'data.paths.join("\\n")' in page
     assert "submitter.disabled = true" not in page
     assert 'mainForm.dataset.submitting = "true"' in page
 

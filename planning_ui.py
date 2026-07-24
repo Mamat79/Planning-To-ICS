@@ -917,7 +917,7 @@ def page_shell(
       const response = await fetch(`/api/choose?${{params.toString()}}`);
       const data = await response.json();
       if (kind === "pdfs" && Array.isArray(data.paths) && data.paths.length) {{
-        multiPdfsInput.value = data.paths.join("\n");
+        multiPdfsInput.value = data.paths.join("\\n");
         multiPdfInfo.textContent = `${{data.paths.length}} PDF sélectionnés`;
         manualPdfInput.value = data.paths[0];
         if (data.planning_dir) planningDirInput.value = data.planning_dir;
