@@ -91,7 +91,7 @@ GITHUB_URL = "https://github.com/Mamat79/Planning-To-ICS"
 
 LIGHT_STYLESHEET = """
 QMainWindow, QDialog { background: #f5f7f8; color: #172229; }
-QWidget { font-family: "Segoe UI"; font-size: 10pt; }
+QWidget { color: #172229; font-family: "Segoe UI"; font-size: 10pt; }
 QFrame#sidePanel { background: #eef2f3; border-right: 1px solid #d4dcdf; }
 QFrame#instruction { background: #eaf7f2; border: 1px solid #b7dfcf; border-radius: 5px; }
 QFrame#dropZone { background: transparent; border: 1px dashed #7d9aa4; border-radius: 5px; }
@@ -116,7 +116,7 @@ QStatusBar { background: #edf1f2; }
 
 DARK_STYLESHEET = """
 QMainWindow, QDialog { background: #1e2225; color: #e7ecee; }
-QWidget { font-family: "Segoe UI"; font-size: 10pt; }
+QWidget { color: #e7ecee; font-family: "Segoe UI"; font-size: 10pt; }
 QFrame#sidePanel { background: #252b2f; border-right: 1px solid #3a4449; }
 QFrame#instruction { background: #18352f; border: 1px solid #28695d; border-radius: 5px; }
 QFrame#dropZone { background: transparent; border: 1px dashed #76939d; border-radius: 5px; }
