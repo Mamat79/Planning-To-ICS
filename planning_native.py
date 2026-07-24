@@ -21,7 +21,15 @@ from PySide6.QtCore import (
     QThreadPool,
     Signal,
 )
-from PySide6.QtGui import QAction, QCloseEvent, QDragEnterEvent, QDropEvent, QIcon
+from PySide6.QtGui import (
+    QAction,
+    QCloseEvent,
+    QColor,
+    QDragEnterEvent,
+    QDropEvent,
+    QIcon,
+    QPalette,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -105,6 +113,11 @@ QLineEdit, QComboBox, QPlainTextEdit, QListWidget, QTableWidget, QDateTimeEdit {
   background: white; border: 1px solid #bdcbd0; border-radius: 4px; padding: 5px;
   selection-background-color: #14786b;
 }
+QComboBox QAbstractItemView, QListView {
+  background: white; color: #172229; border: 1px solid #9fb1b7;
+  selection-background-color: #14786b; selection-color: white; outline: 0;
+}
+QToolTip { background: #ffffff; color: #172229; border: 1px solid #9fb1b7; }
 QPushButton { min-height: 30px; padding: 3px 12px; border: 1px solid #1b756c; border-radius: 4px; background: white; color: #155f58; font-weight: 600; }
 QPushButton:hover { background: #edf8f5; }
 QPushButton#primary { background: #14786b; color: white; border-color: #14786b; }
@@ -133,6 +146,11 @@ QLineEdit, QComboBox, QPlainTextEdit, QListWidget, QTableWidget, QDateTimeEdit {
   background: #15191c; color: #e7ecee; border: 1px solid #4c5a60; border-radius: 4px; padding: 5px;
   selection-background-color: #278b7c;
 }
+QComboBox QAbstractItemView, QListView {
+  background: #15191c; color: #e7ecee; border: 1px solid #58676d;
+  selection-background-color: #278b7c; selection-color: white; outline: 0;
+}
+QToolTip { background: #252b2f; color: #e7ecee; border: 1px solid #58676d; }
 QPushButton { min-height: 30px; padding: 3px 12px; border: 1px solid #4c958a; border-radius: 4px; background: #252b2f; color: #bde4dc; font-weight: 600; }
 QPushButton:hover { background: #30413f; }
 QPushButton#primary { background: #238071; color: white; border-color: #238071; }
@@ -148,6 +166,64 @@ QMenuBar::item:selected, QMenu::item:selected { background: #344147; color: whit
 def resource_path(relative: str) -> Path:
     base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
     return base / relative
+
+
+def application_palette(dark: bool) -> QPalette:
+    palette = QPalette()
+    colors = (
+        {
+            "window": "#1e2225",
+            "base": "#15191c",
+            "alternate": "#252b2f",
+            "text": "#e7ecee",
+            "button": "#252b2f",
+            "button_text": "#e7ecee",
+            "highlight": "#278b7c",
+            "highlighted_text": "#ffffff",
+            "placeholder": "#87979d",
+            "tooltip": "#252b2f",
+        }
+        if dark
+        else {
+            "window": "#f5f7f8",
+            "base": "#ffffff",
+            "alternate": "#eef2f3",
+            "text": "#172229",
+            "button": "#ffffff",
+            "button_text": "#155f58",
+            "highlight": "#14786b",
+            "highlighted_text": "#ffffff",
+            "placeholder": "#6c7c82",
+            "tooltip": "#ffffff",
+        }
+    )
+    palette.setColor(QPalette.ColorRole.Window, QColor(colors["window"]))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor(colors["text"]))
+    palette.setColor(QPalette.ColorRole.Base, QColor(colors["base"]))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(colors["alternate"]))
+    palette.setColor(QPalette.ColorRole.Text, QColor(colors["text"]))
+    palette.setColor(QPalette.ColorRole.Button, QColor(colors["button"]))
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor(colors["button_text"]))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(colors["highlight"]))
+    palette.setColor(
+        QPalette.ColorRole.HighlightedText, QColor(colors["highlighted_text"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.PlaceholderText, QColor(colors["placeholder"])
+    )
+    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(colors["tooltip"]))
+    palette.setColor(QPalette.ColorRole.ToolTipText, QColor(colors["text"]))
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.Text,
+        QColor("#8b989d" if not dark else "#69777c"),
+    )
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.ButtonText,
+        QColor("#8b989d" if not dark else "#69777c"),
+    )
+    return palette
 
 
 class WorkerSignals(QObject):
@@ -1130,9 +1206,9 @@ class MainWindow(QMainWindow):
         self.dark_action.blockSignals(True)
         self.dark_action.setChecked(enabled)
         self.dark_action.blockSignals(False)
-        QApplication.instance().setStyleSheet(
-            DARK_STYLESHEET if enabled else LIGHT_STYLESHEET
-        )
+        app = QApplication.instance()
+        app.setPalette(application_palette(enabled))
+        app.setStyleSheet(DARK_STYLESHEET if enabled else LIGHT_STYLESHEET)
         save_settings({"dark_mode": "true" if enabled else "false"})
 
     def _save_paths(self) -> None:

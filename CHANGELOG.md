@@ -8,7 +8,8 @@
   les exports multi-semaines ;
 - conserve les réglages de dossiers existants et ajoute le mode sombre ;
 - corrige le contraste des menus en mode clair ;
-- ajoute une nouvelle icône multi-résolution aux exécutables et raccourcis ;
+- applique une palette claire ou sombre complète aux listes et fenêtres contextuelles ;
+- restaure l'icône appréciée de la V1.09 et la convertit en ICO multi-résolution ;
 - ajoute l'ouverture de la notice PDF depuis le menu `Aide` ;
 - cette préversion reste sur la branche locale `v2-native` et n'est pas publiée.
 

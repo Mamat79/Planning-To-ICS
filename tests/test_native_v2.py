@@ -7,6 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PySide6.QtWidgets import QApplication, QDialog
+from PySide6.QtGui import QPalette
 
 import planning_native
 import planning_settings
@@ -57,6 +58,32 @@ def test_native_window_is_v2_and_starts_without_pdf(
     assert "Ouvrir la notice" in help_actions
     assert window.pdf_combo.count() == 1
     assert "Aucun PDF" in window.analysis.toPlainText()
+    window.close()
+
+
+def test_native_light_and_dark_palettes_cover_popup_controls(
+    qt_app: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        planning_native,
+        "load_settings",
+        lambda: {
+            "planning_dir": str(tmp_path),
+            "output_dir": str(tmp_path),
+            "dark_mode": "false",
+        },
+    )
+    monkeypatch.setattr(planning_native, "save_settings", lambda updates: updates)
+    window = MainWindow()
+
+    window.apply_dark_mode(False)
+    assert qt_app.palette().color(QPalette.ColorRole.Base).name() == "#ffffff"
+    assert qt_app.palette().color(QPalette.ColorRole.Text).name() == "#172229"
+    assert "QComboBox QAbstractItemView" in qt_app.styleSheet()
+
+    window.apply_dark_mode(True)
+    assert qt_app.palette().color(QPalette.ColorRole.Base).name() == "#15191c"
+    assert qt_app.palette().color(QPalette.ColorRole.Text).name() == "#e7ecee"
     window.close()
 
 
