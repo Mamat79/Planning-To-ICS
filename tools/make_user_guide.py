@@ -266,6 +266,14 @@ def build_guide(output: Path) -> Path:
             guide_styles["body"],
         ),
         Spacer(1, 4 * mm),
+        Paragraph("Plusieurs semaines", guide_styles["h2"]),
+        Paragraph(
+            "Cliquer sur <b>Choisir plusieurs PDF</b>, sélectionner les plannings hebdomadaires, "
+            "choisir le technicien principal puis cliquer sur <b>Plusieurs semaines</b>. "
+            "Chaque semaine peut être corrigée avant la création d'un seul fichier ICS.",
+            guide_styles["body"],
+        ),
+        Spacer(1, 4 * mm),
         Paragraph("Plusieurs techniciens", guide_styles["h2"]),
         step_table(
             1,
@@ -305,7 +313,8 @@ def build_guide(output: Path) -> Path:
         Paragraph("Méthode rapide", guide_styles["h2"]),
         step_table(
             1,
-            "Dans le dossier d'export, ouvrir le fichier <b>.ics</b> du technicien voulu.",
+            "Dans Planning to ICS, cliquer sur <b>Ouvrir dans Outlook / agenda</b>. "
+            "Un double-clic sur le fichier <b>.ics</b> utilise la même méthode.",
             guide_styles,
         ),
         Spacer(1, 3 * mm),
@@ -331,7 +340,10 @@ def build_guide(output: Path) -> Path:
         ),
         Spacer(1, 6 * mm),
         callout(
-            "<b>Important :</b> un import ICS est une copie des événements à cet instant. "
+            "<b>Important :</b> ne pas glisser le fichier ICS directement dans la grille du nouvel "
+            "Outlook : cette méthode peut mal afficher les accents. Utiliser le bouton d'ouverture "
+            "ou <b>Ajouter un calendrier &gt; Charger à partir d'un fichier</b>. "
+            "Un import ICS est une copie des événements à cet instant. "
             "Si le planning change, générer un nouvel ICS et vérifier le résultat avant de l'importer.",
             guide_styles,
         ),

@@ -2,8 +2,12 @@
 
 ## V1.08
 
+- export multi-semaines : sélection de plusieurs PDF hebdomadaires et création d'un seul ICS pour le technicien choisi ;
+- prévisualisation et modification de chaque semaine avant l'export multi-semaines ;
+- ouverture explicite du fichier ICS avec l'application d'agenda par défaut ;
+- avertissement contre le glisser-déposer dans la grille du nouvel Outlook, qui peut mal décoder les accents malgré un fichier UTF-8 valide ;
 - descriptions simplifiées : mission et pause uniquement, sans horaires ni durée totale issus du PDF ;
-- trois parcours distincts : export direct, prévisualisation modifiable et ajout de techniciens ;
+- quatre parcours distincts : export direct, prévisualisation modifiable, plusieurs semaines et ajout de techniciens ;
 - tableau à cases à cocher pour sélectionner plusieurs techniciens ;
 - sélection automatique des techniciens partageant une mission avec le technicien principal ;
 - prévisualisation et modification séparées pour chaque technicien avant l'export multiple ;

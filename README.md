@@ -54,6 +54,7 @@ L'application s'ouvre dans une fenêtre dédiée avec :
 - le choix du dossier où se trouvent les plannings PDF par défaut ;
 - la liste de tous les PDF trouvés dans ce dossier et ses sous-dossiers ;
 - le choix manuel d'un PDF ailleurs sur le disque avec `Parcourir` ;
+- la sélection de plusieurs PDF hebdomadaires pour créer un seul ICS couvrant plusieurs semaines ;
 - la liste des techniciens du PDF choisi ;
 - un diagnostic indiquant si le planning est compatible, scanné ou non reconnu ;
 - le choix du dossier d'export du `.ics` ;
@@ -72,15 +73,18 @@ L'application s'ouvre dans une fenêtre dédiée avec :
 
 Le dossier des plannings et le dossier d'export sont mémorisés entre deux lancements.
 
-Trois parcours sont disponibles :
+Quatre parcours sont disponibles :
 
 1. `Générer ICS` exporte directement le technicien choisi.
 2. `Prévisualiser et modifier` affiche ses événements dans un tableau modifiable avant l'export.
-3. `Ajouter des techniciens` ouvre un tableau de sélection. Le technicien principal est déjà coché ; il est possible d'ajouter manuellement d'autres personnes ou de cocher automatiquement celles qui partagent au moins une mission avec lui.
+3. `Plusieurs semaines` réunit les PDF hebdomadaires choisis dans un seul ICS pour le technicien principal. Chaque semaine reste modifiable avant l'export.
+4. `Ajouter des techniciens` ouvre un tableau de sélection. Le technicien principal est déjà coché ; il est possible d'ajouter manuellement d'autres personnes ou de cocher automatiquement celles qui partagent au moins une mission avec lui.
 
 Après une prévisualisation simple ou multiple, chaque événement peut être décoché. Le résumé, les dates, les heures et la description restent modifiables avant l'export. En mode multiple, chaque technicien dispose de son propre tableau.
 
-Une fois le fichier `.ics` généré, il faut l'importer dans l'agenda voulu. L'application crée le fichier ICS, mais elle ne l'ajoute pas automatiquement dans Outlook, Google Agenda ou un autre calendrier.
+Une fois le fichier `.ics` généré, utiliser le bouton `Ouvrir dans Outlook / agenda`. Dans le nouvel Outlook, il est également possible de choisir `Ajouter un calendrier`, puis `Charger à partir d'un fichier`. Éviter de glisser le fichier directement dans la grille du calendrier : cet importeur Outlook peut mal interpréter les accents alors que le fichier ICS est bien en UTF-8.
+
+L'application crée le fichier ICS, mais elle ne l'ajoute pas automatiquement dans Outlook, Google Agenda ou un autre calendrier.
 
 ## Tutoriel vidéo
 
