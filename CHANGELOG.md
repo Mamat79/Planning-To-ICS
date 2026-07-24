@@ -11,6 +11,7 @@
 - applique une palette claire ou sombre complète aux listes et fenêtres contextuelles ;
 - restaure l'icône appréciée de la V1.09 et la convertit en ICO multi-résolution ;
 - ajoute l'ouverture de la notice PDF depuis le menu `Aide` ;
+- ouvre la notice dans le navigateur par défaut pour éviter les associations PDF défectueuses ;
 - publie une application réellement native sans navigateur ni serveur HTTP local ;
 - fournit un installateur Windows et un paquet macOS autonomes ;
 - conserve les anciennes releases accessibles sur GitHub.

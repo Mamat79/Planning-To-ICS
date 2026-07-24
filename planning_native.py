@@ -1286,7 +1286,10 @@ class MainWindow(QMainWindow):
             )
             return
         try:
-            open_path(notice)
+            if not webbrowser.open(notice.resolve().as_uri()):
+                raise RuntimeError(
+                    "Impossible d'ouvrir la notice dans le navigateur par défaut."
+                )
         except Exception as exc:
             self.show_error(str(exc))
 

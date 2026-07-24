@@ -87,6 +87,34 @@ def test_native_light_and_dark_palettes_cover_popup_controls(
     window.close()
 
 
+def test_native_notice_opens_in_browser(
+    qt_app: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    notice = tmp_path / "Planning_to_ICS_V2.0_Notice.pdf"
+    notice.write_bytes(b"%PDF-1.4\n")
+    opened: list[str] = []
+    monkeypatch.setattr(planning_native, "resource_path", lambda _name: notice)
+    monkeypatch.setattr(
+        planning_native.webbrowser,
+        "open",
+        lambda url: opened.append(url) or True,
+    )
+    monkeypatch.setattr(
+        planning_native,
+        "load_settings",
+        lambda: {
+            "planning_dir": str(tmp_path),
+            "output_dir": str(tmp_path),
+            "dark_mode": "false",
+        },
+    )
+    monkeypatch.setattr(planning_native, "save_settings", lambda updates: updates)
+    window = MainWindow()
+    window.open_notice()
+    assert opened == [notice.resolve().as_uri()]
+    window.close()
+
+
 def test_native_services_find_pdf_and_people(planning_pdf: Path) -> None:
     assert list_planning_pdfs(planning_pdf.parent) == [planning_pdf]
     assert week_year_for_pdf(planning_pdf) == (2026, 30)
