@@ -310,22 +310,7 @@ def build_guide(output: Path) -> Path:
         ),
         PageBreak(),
         Paragraph("3. Importer dans Outlook", guide_styles["h1"]),
-        Paragraph("Méthode rapide", guide_styles["h2"]),
-        step_table(
-            1,
-            "Dans Planning to ICS, cliquer sur <b>Ouvrir dans Outlook / agenda</b>. "
-            "Un double-clic sur le fichier <b>.ics</b> utilise la même méthode.",
-            guide_styles,
-        ),
-        Spacer(1, 3 * mm),
-        step_table(
-            2,
-            "Outlook affiche un aperçu. Vérifier les événements puis cliquer sur "
-            "<b>Ajouter au calendrier</b> ou confirmer l'import proposé.",
-            guide_styles,
-        ),
-        Spacer(1, 5 * mm),
-        Paragraph("Depuis le calendrier Outlook sur le web", guide_styles["h2"]),
+        Paragraph("Nouvel Outlook et Outlook sur le web", guide_styles["h2"]),
         step_table(
             1,
             "Ouvrir <b>Calendrier</b>, puis <b>Ajouter un calendrier</b>.",
@@ -334,9 +319,44 @@ def build_guide(output: Path) -> Path:
         Spacer(1, 3 * mm),
         step_table(
             2,
-            "Choisir <b>Charger à partir d'un fichier</b>, sélectionner le fichier ICS, "
-            "choisir le calendrier de destination, puis cliquer sur <b>Importer</b>.",
+            "Choisir <b>Charger à partir d'un fichier</b>, cliquer sur <b>Parcourir</b>, "
+            "sélectionner le fichier <b>.ics</b>, puis cliquer sur <b>Ouvrir</b>.",
             guide_styles,
+        ),
+        Spacer(1, 3 * mm),
+        step_table(
+            3,
+            "Choisir le calendrier de destination, puis cliquer sur <b>Importer</b>.",
+            guide_styles,
+        ),
+        Spacer(1, 5 * mm),
+        Paragraph("Outlook classique pour Windows", guide_styles["h2"]),
+        step_table(
+            1,
+            "Ouvrir <b>Fichier &gt; Ouvrir et exporter &gt; Importer/Exporter</b>.",
+            guide_styles,
+        ),
+        Spacer(1, 3 * mm),
+        step_table(
+            2,
+            "Choisir <b>Importer un fichier iCalendar (.ics) ou vCalendar (.vcs)</b>, "
+            "puis cliquer sur <b>Suivant</b>.",
+            guide_styles,
+        ),
+        Spacer(1, 3 * mm),
+        step_table(
+            3,
+            "Sélectionner le fichier ICS, cliquer sur <b>OK</b>, puis confirmer "
+            "<b>Ouvrir en tant que nouveau</b> ou l'import proposé.",
+            guide_styles,
+        ),
+        Spacer(1, 5 * mm),
+        Paragraph("Ouverture directe", guide_styles["h2"]),
+        Paragraph(
+            "Dans Planning to ICS, le bouton <b>Ouvrir dans Outlook / agenda</b> ouvre le "
+            "fichier avec l'application de calendrier définie par défaut. Un double-clic sur "
+            "le fichier ICS utilise la même méthode.",
+            guide_styles["body"],
         ),
         Spacer(1, 6 * mm),
         callout(
@@ -355,9 +375,12 @@ def build_guide(output: Path) -> Path:
             guide_styles["body"],
         ),
         Paragraph(
-            "Aide Microsoft : <link href='https://support.microsoft.com/fr-fr/outlook/"
+            "Aide Microsoft - nouvel Outlook : <link href='https://support.microsoft.com/fr-fr/outlook/"
             "import-or-subscribe-to-a-calendar-in-outlook-com-or-outlook-on-the-web' "
-            "color='#0F766E'>Importer un calendrier ICS dans Outlook</link>.",
+            "color='#0F766E'>charger un fichier ICS</link>. "
+            "Outlook classique : <link href='https://support.microsoft.com/fr-fr/office/"
+            "importer-des-calendriers-dans-outlook-8e8364e1-400e-4c0f-a573-fe76b5a2d379' "
+            "color='#0F766E'>importer un calendrier</link>.",
             guide_styles["small"],
         ),
     ]

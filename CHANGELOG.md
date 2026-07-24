@@ -2,6 +2,7 @@
 
 ## V1.09
 
+- notice complétée avec les procédures d'importation pour le nouvel Outlook, Outlook sur le web et Outlook classique ;
 - export multi-semaines : sélection de plusieurs PDF hebdomadaires et création d'un seul ICS pour le technicien choisi ;
 - prévisualisation et modification de chaque semaine avant l'export multi-semaines ;
 - ouverture explicite du fichier ICS avec l'application d'agenda par défaut ;
