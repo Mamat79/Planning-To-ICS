@@ -1,5 +1,14 @@
 # Journal des modifications
 
+## V2.0 - Préversion native locale
+
+- remplace l'interface web locale par une fenêtre PySide6/Qt native ;
+- conserve l'extraction PDF et la génération ICS éprouvées de la V1.09 ;
+- ajoute des dialogues natifs pour l'édition, les exports multi-techniciens et
+  les exports multi-semaines ;
+- conserve les réglages de dossiers existants et ajoute le mode sombre ;
+- cette préversion reste sur la branche locale `v2-native` et n'est pas publiée.
+
 ## V1.09
 
 - notice complétée avec les procédures d'importation pour le nouvel Outlook, Outlook sur le web et Outlook classique ;

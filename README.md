@@ -1,5 +1,9 @@
 # Planning to ICS V1.09
 
+> Une V2 native PySide6/Qt est en cours de test local sur la branche
+> `v2-native`. Elle fonctionne sans navigateur ni serveur HTTP. Voir
+> [V2_NATIVE.md](V2_NATIVE.md). La V1.09 reste la version publique stable.
+
 Application locale pour Windows et macOS permettant de générer des fichiers calendrier .ics compatibles Outlook à partir des plannings PDF hebdomadaires RF-Ext.
 
 Il s'agit d'une application métier très spécifique, conçue pour le format des plannings utilisés dans mon travail. Le projet est public afin d'en faciliter l'accès à mes collègues, mais si vous ne travaillez pas avec ce type de planning, il y a peu de chances qu'il vous soit utile.
