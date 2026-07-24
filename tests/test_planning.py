@@ -4,6 +4,7 @@ import json
 import os
 import urllib.parse
 import zipfile
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -16,8 +17,11 @@ from planning_to_ics import (
     ExtractionResult,
     Request,
     WorkEvent,
+    build_combined_ics,
     build_ics,
     build_uid,
+    combined_output_ics_path,
+    combined_period_label,
     diagnose_events,
     extract_planning,
     format_event_description,
@@ -346,9 +350,105 @@ def test_main_page_exposes_the_three_export_paths(tmp_path: Path, monkeypatch) -
 
     assert 'value="generate"' in page
     assert 'value="preview"' in page
+    assert 'value="preview_multiweek"' in page
     assert 'value="choose_multiple"' in page
+    assert "Choisir plusieurs PDF" in page
+    assert "Évite le glisser-déposer" in page
     assert "submitter.disabled = true" not in page
     assert 'mainForm.dataset.submitting = "true"' in page
+
+
+def test_multiweek_export_combines_two_pdfs_with_accents(
+    planning_pdf: Path, tmp_path: Path
+) -> None:
+    next_week = tmp_path / "planning-semaine-31.pdf"
+    build_planning_pdf(next_week, week=31)
+
+    results, errors = planning_ui.extract_results_for_pdfs(
+        [next_week, planning_pdf], "Alice Dupont"
+    )
+    assert errors == []
+    assert [(result.year, result.week) for result in results] == [(2026, 30), (2026, 31)]
+    assert [event.start.date().isoformat() for result in results for event in result.events] == [
+        "2026-07-20",
+        "2026-07-27",
+    ]
+
+    output = planning_ui.export_combined_results(results, tmp_path)
+    raw = output.read_bytes()
+    text = raw.decode("utf-8")
+
+    assert output == combined_output_ics_path(tmp_path, results)
+    assert output.name == "Planning_Alice_Dupont_S30-S31_2026.ics"
+    assert not raw.startswith(b"\xef\xbb\xbf")
+    assert text.count("BEGIN:VCALENDAR") == 1
+    assert text.count("BEGIN:VEVENT") == 2
+    assert text.count("SUMMARY:Hôtel Étoilé") == 2
+    assert len({line for line in text.splitlines() if line.startswith("UID:")}) == 2
+    assert "X-WR-CALNAME:Planning DUPONT ALICE S30 à S31 2026" in text
+
+
+def test_multiweek_export_rejects_different_people() -> None:
+    first = extraction_result("DUPONT ALICE", "Hôtel Étoilé")
+    second = replace(extraction_result("MARTIN BOB", "Studio Mobile"), week=31)
+
+    with pytest.raises(ValueError, match="même technicien"):
+        build_combined_ics([first, second])
+
+
+def test_multiweek_period_labels_cover_same_and_cross_year() -> None:
+    first = extraction_result("DUPONT ALICE", "Mission")
+    second = replace(extraction_result("DUPONT ALICE", "Mission"), week=31)
+
+    assert combined_period_label([first, second]) == "S30 à S31 2026"
+    assert combined_period_label([first, second], filename=True) == "S30-S31_2026"
+
+    first = replace(first, week=53)
+    second = replace(second, week=1, year=2027)
+    assert combined_period_label([first, second]) == "S53 2026 à S01 2027"
+
+    first = replace(first, week=30, year=2026)
+    second = replace(second, week=32, year=2026)
+    assert combined_period_label([first, second]) == "S30 2026, S32 2026"
+    assert combined_period_label([first, second], filename=True) == "S30-S32_2026"
+
+
+def test_multiweek_picker_validates_files_and_preserves_preview_edits(
+    planning_pdf: Path, tmp_path: Path
+) -> None:
+    next_week = tmp_path / "planning-semaine-31.pdf"
+    build_planning_pdf(next_week, week=31)
+    fields = {
+        "manual_pdf": str(planning_pdf),
+        "multi_pdfs": f"{planning_pdf}\n{next_week}",
+        "planning_dir": str(tmp_path),
+        "output_dir": str(tmp_path),
+        "person": "DUPONT ALICE",
+    }
+
+    assert planning_ui.chosen_multi_pdfs(fields) == [planning_pdf, next_week]
+    results, errors = planning_ui.extract_results_for_pdfs(
+        [planning_pdf, next_week], "DUPONT ALICE"
+    )
+    editor = planning_ui.multi_event_editor(results, fields, errors, multiweek=True)
+
+    assert 'value="export_multiweek_edited"' in editor
+    assert 'name="multi_pdfs"' in editor
+    assert "planning-semaine-31.pdf" in editor
+    assert "Hôtel Étoilé" in editor
+
+
+def test_multiweek_skips_a_duplicate_period(planning_pdf: Path, tmp_path: Path) -> None:
+    duplicate = tmp_path / "meme-semaine.pdf"
+    build_planning_pdf(duplicate, week=30)
+
+    results, errors = planning_ui.extract_results_for_pdfs(
+        [planning_pdf, duplicate], "DUPONT ALICE"
+    )
+
+    assert len(results) == 1
+    assert len(errors) == 1
+    assert "déjà sélectionnée" in errors[0]
 
 
 def test_ics_escapes_french_special_characters_and_is_valid() -> None:

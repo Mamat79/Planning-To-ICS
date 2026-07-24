@@ -34,6 +34,8 @@ from planning_to_ics import (
     Request,
     WorkEvent,
     build_ics,
+    combined_output_ics_path,
+    combined_period_label,
     extract_all_plannings,
     extract_planning,
     format_summary,
@@ -43,6 +45,7 @@ from planning_to_ics import (
     output_ics_path,
     week_year_from_pdf,
     week_year_from_path,
+    write_combined_ics_file,
     write_ics_file,
     write_log,
 )
@@ -251,6 +254,7 @@ def page_shell(
     pdfs: list[str] | None = None,
     selected_person: str = "",
     manual_pdf: str = "",
+    multi_pdfs: list[str] | None = None,
     planning_dir: str = "",
     output_dir: str = "",
 ) -> bytes:
@@ -258,6 +262,13 @@ def page_shell(
     manual_pdf_value = html.escape(manual_pdf, quote=True)
     planning_dir_value = html.escape(planning_dir or settings["planning_dir"], quote=True)
     output_dir_value = html.escape(output_dir or settings["output_dir"], quote=True)
+    multi_pdf_paths = multi_pdfs or []
+    multi_pdfs_value = html.escape("\n".join(multi_pdf_paths), quote=True)
+    multi_pdfs_status = (
+        f"{len(multi_pdf_paths)} PDF sélectionnés"
+        if multi_pdf_paths
+        else "Aucun lot de semaines sélectionné"
+    )
     pdfs = pdfs if pdfs is not None else list_planning_pdfs(planning_dir or settings["planning_dir"])
     body = f"""<!doctype html>
 <html lang="fr">
@@ -514,6 +525,14 @@ def page_shell(
       background: #eef7f5;
       color: var(--accent-strong);
     }}
+    .multi-pdf-picker {{
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 16px;
+    }}
+    .multi-pdf-picker button {{ min-height: 34px; padding: 6px 9px; }}
+    .multi-pdf-picker span {{ color: var(--muted); font-size: 12px; }}
     .multi-toggle {{
       display: flex;
       align-items: center;
@@ -716,6 +735,11 @@ def page_shell(
       </div>
       <div class="pdf-status" id="pdf_info" role="status">Choisis un PDF pour vérifier son contenu.</div>
       <div class="drop-zone" id="drop_zone">Glisse-dépose un PDF ici</div>
+      <input id="multi_pdfs" name="multi_pdfs" type="hidden" value="{multi_pdfs_value}">
+      <div class="multi-pdf-picker">
+        <button class="secondary" id="browse_multi_pdfs" type="button">Choisir plusieurs PDF</button>
+        <span id="multi_pdf_info">{multi_pdfs_status}</span>
+      </div>
 
       <label for="person">Technicien</label>
       <select id="person" name="person" required>
@@ -731,11 +755,12 @@ def page_shell(
       <div class="actions">
         <button type="submit" name="action" value="generate">Générer ICS</button>
         <button class="secondary" type="submit" name="action" value="preview">Prévisualiser et modifier</button>
+        <button class="secondary" type="submit" name="action" value="preview_multiweek">Plusieurs semaines</button>
         <button class="secondary" type="submit" name="action" value="choose_multiple">Ajouter des techniciens</button>
         <button class="ghost" type="submit" name="action" value="quit" formnovalidate>Quitter l'application</button>
       </div>
       <div class="progress-indicator" role="status" aria-live="polite">Analyse du PDF en cours...</div>
-      <p class="import-note">Après génération, importe le fichier ICS dans ton agenda Outlook, Google Agenda ou autre calendrier. L'application crée le fichier, elle ne l'ajoute pas automatiquement à l'agenda.</p>
+      <p class="import-note">Après génération, utilise « Ouvrir l'ICS » ou, dans le nouvel Outlook, « Ajouter un calendrier > Charger à partir d'un fichier ». Évite le glisser-déposer, qui peut mal interpréter les accents.</p>
       <div class="settings-tools">
         <button class="ghost" id="export_settings" type="button">Exporter mes réglages</button>
         <button class="ghost" id="import_settings" type="button">Importer mes réglages</button>
@@ -756,9 +781,12 @@ def page_shell(
     const outputInput = document.getElementById("output_dir");
     const browsePlanningDirButton = document.getElementById("browse_planning_dir");
     const browsePdfButton = document.getElementById("browse_pdf");
+    const browseMultiPdfsButton = document.getElementById("browse_multi_pdfs");
     const browseOutputButton = document.getElementById("browse_output");
     const mainForm = document.getElementById("main_form");
     const dropZone = document.getElementById("drop_zone");
+    const multiPdfsInput = document.getElementById("multi_pdfs");
+    const multiPdfInfo = document.getElementById("multi_pdf_info");
     const settingsFile = document.getElementById("settings_file");
     const toast = document.createElement("div");
     toast.className = "toast";
@@ -888,8 +916,18 @@ def page_shell(
       }});
       const response = await fetch(`/api/choose?${{params.toString()}}`);
       const data = await response.json();
+      if (kind === "pdfs" && Array.isArray(data.paths) && data.paths.length) {{
+        multiPdfsInput.value = data.paths.join("\n");
+        multiPdfInfo.textContent = `${{data.paths.length}} PDF sélectionnés`;
+        manualPdfInput.value = data.paths[0];
+        if (data.planning_dir) planningDirInput.value = data.planning_dir;
+        await loadPdfs();
+        await loadPeople();
+        return;
+      }}
       if (data.path) {{
         if (kind === "pdf") {{
+          clearMultiPdfs();
           manualPdfInput.value = data.path;
           if (data.planning_dir) {{
             planningDirInput.value = data.planning_dir;
@@ -905,15 +943,25 @@ def page_shell(
       }}
     }}
 
+    function clearMultiPdfs() {{
+      multiPdfsInput.value = "";
+      multiPdfInfo.textContent = "Aucun lot de semaines sélectionné";
+    }}
+
     pdfSelect.addEventListener("change", async () => {{
       if (pdfSelect.value) {{
+        clearMultiPdfs();
         manualPdfInput.value = pdfSelect.value;
         await loadPeople();
       }}
     }});
-    manualPdfInput.addEventListener("change", loadPeople);
+    manualPdfInput.addEventListener("change", async () => {{
+      clearMultiPdfs();
+      await loadPeople();
+    }});
     planningDirInput.addEventListener("change", async () => {{
       await rememberSettings({{ planning_dir: planningDirInput.value.trim() }});
+      clearMultiPdfs();
       manualPdfInput.value = "";
       personSelect.innerHTML = '<option value="">Choisir...</option>';
       pdfInfo.className = "pdf-status";
@@ -923,6 +971,7 @@ def page_shell(
     outputInput.addEventListener("change", () => rememberSettings({{ output_dir: outputInput.value.trim() }}));
     browsePlanningDirButton.addEventListener("click", () => choose("planning_directory"));
     browsePdfButton.addEventListener("click", () => choose("pdf"));
+    browseMultiPdfsButton.addEventListener("click", () => choose("pdfs"));
     browseOutputButton.addEventListener("click", () => choose("directory"));
     const peopleChoices = Array.from(document.querySelectorAll(".person-choice"));
     const sameMissionToggle = document.getElementById("same_mission_toggle");
@@ -988,6 +1037,7 @@ def page_shell(
         }});
         const data = await response.json();
         if (!response.ok || data.error) throw new Error(data.error || "Import impossible.");
+        clearMultiPdfs();
         manualPdfInput.value = data.path;
         planningDirInput.value = data.planning_dir || planningDirInput.value;
         await loadPdfs();
@@ -1010,6 +1060,7 @@ def page_shell(
         showToast("Dépose un fichier PDF.");
         return;
       }}
+      clearMultiPdfs();
       manualPdfInput.value = path;
       await loadPdfs();
       await loadPeople();
@@ -1018,7 +1069,7 @@ def page_shell(
     mainForm.addEventListener("submit", event => {{
       const submitter = event.submitter;
       if (!submitter) return;
-      if (["generate", "preview", "choose_multiple"].includes(submitter.value)) {{
+      if (["generate", "preview", "preview_multiweek", "choose_multiple"].includes(submitter.value)) {{
         if (mainForm.dataset.submitting === "true") {{
           event.preventDefault();
           return;
@@ -1084,8 +1135,8 @@ def render_home() -> bytes:
     settings = load_settings()
     content = """
       <h2>Choisir un planning PDF</h2>
-      <p class="empty">Choisis le dossier des plannings, sélectionne un PDF dans la liste, choisis le technicien, puis prévisualise ou génère l'ICS.</p>
-      <p class="import-note">Une fois le fichier ICS généré, il faut l'importer dans ton agenda. Dans Outlook, utilise l'import de calendrier ou ouvre le fichier ICS pour l'ajouter au calendrier voulu.</p>
+      <p class="empty">Choisis un PDF pour une semaine, ou « Choisir plusieurs PDF » pour réunir plusieurs semaines du même technicien.</p>
+      <p class="import-note">Une fois l'ICS généré, ouvre-le avec le bouton de l'application ou utilise « Ajouter un calendrier &gt; Charger à partir d'un fichier » dans le nouvel Outlook. Évite de le glisser dans la grille du calendrier : cette méthode peut abîmer les accents.</p>
     """
     return page_shell(
         content,
@@ -1123,6 +1174,17 @@ def chosen_pdf(fields: dict[str, str]) -> Path:
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF introuvable: {pdf_path}")
     return pdf_path
+
+
+def chosen_multi_pdfs(fields: dict[str, str]) -> list[Path]:
+    values = [value.strip() for value in fields.get("multi_pdfs", "").splitlines() if value.strip()]
+    paths = [Path(value) for value in dict.fromkeys(values)]
+    if len(paths) < 2:
+        raise ValueError("Choisis au moins deux PDF pour regrouper plusieurs semaines.")
+    for path in paths:
+        if path.suffix.lower() != ".pdf" or not path.is_file():
+            raise FileNotFoundError(f"PDF introuvable: {path}")
+    return paths
 
 
 def chosen_output_dir(fields: dict[str, str]) -> Path:
@@ -1234,7 +1296,11 @@ def event_editor(result: ExtractionResult, fields: dict[str, str], summary_html:
 
 
 def multi_event_editor(
-    results: list[ExtractionResult], fields: dict[str, str], errors: list[str]
+    results: list[ExtractionResult],
+    fields: dict[str, str],
+    errors: list[str],
+    *,
+    multiweek: bool = False,
 ) -> str:
     hidden_fields = [
         hidden_input("manual_pdf", fields.get("manual_pdf", "")),
@@ -1243,6 +1309,8 @@ def multi_event_editor(
         hidden_input("person", fields.get("person", "")),
         hidden_input("multi_result_count", str(len(results))),
     ]
+    if multiweek:
+        hidden_fields.append(hidden_input("multi_pdfs", fields.get("multi_pdfs", "")))
     editors: list[str] = []
     for result_index, result in enumerate(results):
         prefix = f"tech_{result_index}_"
@@ -1277,10 +1345,15 @@ def multi_event_editor(
                 """
             )
         rows_html = "".join(rows) or '<tr><td colspan="5">Aucun événement extrait.</td></tr>'
+        editor_title = html.escape(result.person_name)
+        if multiweek:
+            editor_title = (
+                f"S{result.week:02d} {result.year} - {html.escape(result.pdf.name)}"
+            )
         editors.append(
             f"""
             <div class="technician-editor">
-              <h3>{html.escape(result.person_name)}</h3>
+              <h3>{editor_title}</h3>
               {diagnostics_html(result)}
               <table>
                 <thead><tr><th>Inclure</th><th>Dates début / fin</th><th>Heures début / fin</th><th>Résumé</th><th>Description</th></tr></thead>
@@ -1290,22 +1363,37 @@ def multi_event_editor(
             """
         )
     error_html = ""
+    error_label = "Semaines non prévisualisées" if multiweek else "Techniciens non prévisualisés"
     if errors:
         error_html = (
-            '<div class="diagnostic-warning"><strong>Techniciens non prévisualisés :</strong><br>'
+            f'<div class="diagnostic-warning"><strong>{error_label} :</strong><br>'
             + "<br>".join(html.escape(error) for error in errors)
             + "</div>"
         )
+    title = (
+        f"Prévisualisation de {len(results)} semaine(s)"
+        if multiweek
+        else f"Prévisualisation de {len(results)} technicien(s)"
+    )
+    explanation = (
+        "Toutes les semaines seront réunies dans un seul ICS. Chaque événement peut être décoché ou modifié."
+        if multiweek
+        else "Chaque événement peut être décoché ou modifié avant l'export."
+    )
+    export_action = "export_multiweek_edited" if multiweek else "export_multiple_edited"
+    export_label = "Exporter un seul ICS multi-semaines" if multiweek else "Exporter les ICS et le ZIP"
+    back_action = "preview_multiweek" if multiweek else "choose_multiple"
+    back_label = "Recalculer depuis les PDF" if multiweek else "Modifier la sélection"
     return f"""
-      <h2>Prévisualisation de {len(results)} technicien(s)</h2>
-      <p class="empty">Chaque événement peut être décoché ou modifié avant l'export.</p>
+      <h2>{title}</h2>
+      <p class="empty">{explanation}</p>
       {error_html}
       <form method="post">
         {''.join(hidden_fields)}
         {''.join(editors)}
         <div class="actions">
-          <button type="submit" name="action" value="export_multiple_edited">Exporter les ICS et le ZIP</button>
-          <button class="secondary" type="submit" name="action" value="choose_multiple">Modifier la sélection</button>
+          <button type="submit" name="action" value="{export_action}">{export_label}</button>
+          <button class="secondary" type="submit" name="action" value="{back_action}">{back_label}</button>
         </div>
       </form>
     """
@@ -1467,6 +1555,33 @@ def extract_results_for_people(
     return results, errors
 
 
+def extract_results_for_pdfs(
+    pdfs: list[Path], person: str
+) -> tuple[list[ExtractionResult], list[str]]:
+    results: list[ExtractionResult] = []
+    errors: list[str] = []
+    seen_periods: set[tuple[int, int]] = set()
+    for pdf in pdfs:
+        try:
+            year, week = week_year_for_pdf(pdf)
+            period = (year, week)
+            if period in seen_periods:
+                errors.append(f"{pdf.name} : la semaine S{week:02d} {year} est déjà sélectionnée.")
+                continue
+            result = extract_planning(
+                Request(person=person, week=week, year=year),
+                source_dir=pdf.parent,
+                explicit_pdf=pdf,
+                assume_yes=True,
+            )
+            seen_periods.add(period)
+            results.append(result)
+        except Exception as exc:
+            errors.append(f"{pdf.name} : {exc}")
+    results.sort(key=lambda result: (result.year, result.week))
+    return results, errors
+
+
 def people_selection_table(
     results: list[ExtractionResult], principal_name: str, fields: dict[str, str], errors: list[str]
 ) -> str:
@@ -1576,6 +1691,15 @@ def export_multiple_results(
     return paths, zip_path
 
 
+def export_combined_results(results: list[ExtractionResult], output_dir: Path) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = combined_output_ics_path(output_dir, results)
+    write_combined_ics_file(path, results)
+    for result in results:
+        write_log(output_dir, result, path)
+    return path
+
+
 def open_export_target(ics_path: Path, show_folder: bool) -> Path:
     if not ics_path.is_file() or ics_path.suffix.lower() != ".ics":
         raise FileNotFoundError(f"Fichier ICS introuvable: {ics_path}")
@@ -1596,12 +1720,13 @@ def export_actions_html(ics_path: Path, fields: dict[str, str]) -> str:
         hidden_input("planning_dir", fields.get("planning_dir", "")),
         hidden_input("person", fields.get("person", "")),
         hidden_input("output_dir", fields.get("output_dir", "")),
+        hidden_input("multi_pdfs", fields.get("multi_pdfs", "")),
     ]
     return f"""
       <form method="post">
         {''.join(hidden)}
         <div class="actions">
-          <button type="submit" name="action" value="open_ics">Ouvrir l'ICS</button>
+          <button type="submit" name="action" value="open_ics">Ouvrir dans Outlook / agenda</button>
           <button class="secondary" type="submit" name="action" value="open_folder">Afficher dans le dossier</button>
         </div>
       </form>
@@ -1626,7 +1751,7 @@ def run_generation(fields: dict[str, str]) -> bytes:
             label = "Dossier ouvert" if action == "open_folder" else "Fichier ICS ouvert"
             content = f"""
               <p class="ok">{label} : <code>{html.escape(str(target))}</code></p>
-              <p class="import-note">Dans Outlook, vérifie le calendrier de destination puis confirme l'ajout.</p>
+              <p class="import-note">Dans Outlook, vérifie le calendrier de destination puis confirme l'ajout. Cette méthode préserve les accents, contrairement au glisser-déposer dans la grille du nouvel Outlook.</p>
             """
             return page_shell(
                 content,
@@ -1642,6 +1767,29 @@ def run_generation(fields: dict[str, str]) -> bytes:
         planning_dir_text = str(explicit_pdf.parent)
         save_settings({"planning_dir": planning_dir_text, "output_dir": output_dir_text})
         people = list(cached_people_for_pdf(str(explicit_pdf)))
+        if action == "preview_multiweek":
+            if not selected_person:
+                raise ValueError("Choisis le technicien à rechercher dans toutes les semaines.")
+            pdf_paths = chosen_multi_pdfs(fields)
+            weekly_results, extraction_errors = extract_results_for_pdfs(pdf_paths, selected_person)
+            if not weekly_results:
+                raise ValueError("Aucune semaine n'a pu être analysée pour ce technicien.")
+            content = multi_event_editor(
+                weekly_results,
+                fields,
+                extraction_errors,
+                multiweek=True,
+            )
+            return page_shell(
+                content,
+                people=people,
+                selected_person=selected_person,
+                manual_pdf=manual_pdf,
+                multi_pdfs=[str(path) for path in pdf_paths],
+                planning_dir=planning_dir_text,
+                output_dir=output_dir_text,
+            )
+
         if action == "choose_multiple":
             if not selected_person:
                 raise ValueError("Choisis d'abord le technicien principal.")
@@ -1654,6 +1802,11 @@ def run_generation(fields: dict[str, str]) -> bytes:
                 people=people,
                 selected_person=selected_person,
                 manual_pdf=manual_pdf,
+                multi_pdfs=[
+                    value.strip()
+                    for value in fields.get("multi_pdfs", "").splitlines()
+                    if value.strip()
+                ],
                 planning_dir=planning_dir_text,
                 output_dir=output_dir_text,
             )
@@ -1725,6 +1878,32 @@ def run_generation(fields: dict[str, str]) -> bytes:
                 output_dir=str(output_dir),
             )
 
+        if action == "export_multiweek_edited":
+            weekly_results = edited_multiple_results_from_fields(fields)
+            output_dir = chosen_output_dir(fields)
+            ics_path = export_combined_results(weekly_results, output_dir)
+            period = combined_period_label(weekly_results)
+            save_settings({"planning_dir": planning_dir_text, "output_dir": str(output_dir)})
+            content = f"""
+              <p class="ok">ICS multi-semaines généré : <code>{html.escape(str(ics_path))}</code></p>
+              <p class="empty">{len(weekly_results)} semaine(s) réunie(s), période {html.escape(period)}.</p>
+              <p class="import-note">Utilise le bouton ci-dessous ou, dans le nouvel Outlook, « Ajouter un calendrier &gt; Charger à partir d'un fichier ». Ne glisse pas le fichier dans la grille du calendrier.</p>
+              {export_actions_html(ics_path, fields)}
+            """
+            return page_shell(
+                content,
+                people=people,
+                selected_person=selected_person,
+                manual_pdf=manual_pdf,
+                multi_pdfs=[
+                    value.strip()
+                    for value in fields.get("multi_pdfs", "").splitlines()
+                    if value.strip()
+                ],
+                planning_dir=planning_dir_text,
+                output_dir=str(output_dir),
+            )
+
         if not selected_person:
             raise ValueError("Choisis un technicien.")
 
@@ -1736,7 +1915,7 @@ def run_generation(fields: dict[str, str]) -> bytes:
             summary_html = html.escape(format_summary(result))
             content = f"""
               <p class="ok">ICS modifié généré : <code>{html.escape(str(ics_path))}</code></p>
-              <p class="import-note">Dernière étape : importe ce fichier ICS dans ton agenda. Le fichier est prêt, mais il n'est pas ajouté automatiquement dans Outlook ou Google Agenda.</p>
+              <p class="import-note">Utilise « Ouvrir dans Outlook / agenda » ou, dans le nouvel Outlook, « Ajouter un calendrier &gt; Charger à partir d'un fichier ». Évite le glisser-déposer, qui peut mal interpréter les accents.</p>
               {export_actions_html(ics_path, fields)}
               <h2>Résumé exporté</h2>
               <pre>{summary_html}</pre>
@@ -1771,7 +1950,7 @@ def run_generation(fields: dict[str, str]) -> bytes:
         ics_path = export_result(result, output_dir)
         content = f"""
           <p class="ok">ICS généré : <code>{html.escape(str(ics_path))}</code></p>
-          <p class="import-note">Dernière étape : importe ce fichier ICS dans ton agenda. Le fichier est prêt, mais il n'est pas ajouté automatiquement dans Outlook ou Google Agenda.</p>
+          <p class="import-note">Utilise « Ouvrir dans Outlook / agenda » ou, dans le nouvel Outlook, « Ajouter un calendrier &gt; Charger à partir d'un fichier ». Évite le glisser-déposer, qui peut mal interpréter les accents.</p>
           {export_actions_html(ics_path, fields)}
           <h2>Résumé</h2>
           <pre>{summary_html}</pre>
@@ -1803,6 +1982,11 @@ def run_generation(fields: dict[str, str]) -> bytes:
             people=people,
             selected_person=selected_person,
             manual_pdf=manual_pdf,
+            multi_pdfs=[
+                value.strip()
+                for value in fields.get("multi_pdfs", "").splitlines()
+                if value.strip()
+            ],
             planning_dir=planning_dir_text,
             output_dir=output_dir_text,
         )
@@ -1872,13 +2056,15 @@ def render_planning_pdfs_api(query: str) -> bytes:
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
 
-def open_native_dialog(kind: str, initial: str = "") -> str:
-    if kind not in {"pdf", "directory", "planning_directory"}:
+def open_native_dialog(kind: str, initial: str = "") -> str | list[str]:
+    if kind not in {"pdf", "pdfs", "directory", "planning_directory"}:
         return ""
 
     title = "Choisir le dossier d'export ICS"
     if kind == "pdf":
         title = "Choisir un PDF de planning"
+    elif kind == "pdfs":
+        title = "Choisir plusieurs PDF de planning"
     elif kind == "planning_directory":
         title = "Choisir le dossier des plannings"
 
@@ -1898,6 +2084,14 @@ def open_native_dialog(kind: str, initial: str = "") -> str:
                         initialdir=initialdir,
                         filetypes=[("PDF", "*.pdf"), ("Tous les fichiers", "*.*")],
                     ) or ""
+                if kind == "pdfs":
+                    return list(
+                        filedialog.askopenfilenames(
+                            title=title,
+                            initialdir=initialdir,
+                            filetypes=[("PDF", "*.pdf"), ("Tous les fichiers", "*.*")],
+                        )
+                    )
                 return filedialog.askdirectory(
                     title=title,
                     initialdir=initialdir,
@@ -1909,6 +2103,7 @@ def open_native_dialog(kind: str, initial: str = "") -> str:
 
     script = r"""
 import sys
+import json
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog
@@ -1926,12 +2121,20 @@ try:
             initialdir=initial if initial and Path(initial).exists() else None,
             filetypes=[("PDF", "*.pdf"), ("Tous les fichiers", "*.*")]
         )
+        print(path or "", end="")
+    elif kind == "pdfs":
+        paths = filedialog.askopenfilenames(
+            title=title,
+            initialdir=initial if initial and Path(initial).exists() else None,
+            filetypes=[("PDF", "*.pdf"), ("Tous les fichiers", "*.*")]
+        )
+        print(json.dumps(list(paths), ensure_ascii=False), end="")
     else:
         path = filedialog.askdirectory(
             title=title,
             initialdir=initial if initial and Path(initial).exists() else None,
         )
-    print(path or "", end="")
+        print(path or "", end="")
 finally:
     root.destroy()
 """
@@ -1945,7 +2148,14 @@ finally:
         )
     except Exception:
         return ""
-    return completed.stdout.strip()
+    output = completed.stdout.strip()
+    if kind == "pdfs":
+        try:
+            parsed = json.loads(output or "[]")
+        except json.JSONDecodeError:
+            return []
+        return [str(path) for path in parsed if isinstance(path, str) and path]
+    return output
 
 
 def render_choose_api(query: str) -> bytes:
@@ -1956,19 +2166,25 @@ def render_choose_api(query: str) -> bytes:
     planning_dir = params.get("planning_dir", [settings["planning_dir"]])[0] or settings["planning_dir"]
     output_dir = params.get("output_dir", [settings["output_dir"]])[0] or settings["output_dir"]
 
-    if kind == "pdf" and current_pdf and current_pdf.exists():
+    if kind in {"pdf", "pdfs"} and current_pdf and current_pdf.exists():
         initial = str(current_pdf.parent)
-    elif kind in {"pdf", "planning_directory"}:
+    elif kind in {"pdf", "pdfs", "planning_directory"}:
         initial = planning_dir
     elif kind == "directory":
         initial = output_dir
     else:
         initial = ""
 
-    path = open_native_dialog(kind, initial)
-    payload = {"path": path}
+    selection = open_native_dialog(kind, initial)
+    if kind == "pdfs":
+        paths = selection if isinstance(selection, list) else []
+        payload = {"paths": paths}
+        path = paths[0] if paths else ""
+    else:
+        path = selection if isinstance(selection, str) else ""
+        payload = {"path": path}
     updates: dict[str, str] = {}
-    if path and kind == "pdf":
+    if path and kind in {"pdf", "pdfs"}:
         updates["planning_dir"] = str(Path(path).parent)
     elif path and kind == "planning_directory":
         updates["planning_dir"] = path

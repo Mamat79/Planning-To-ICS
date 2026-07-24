@@ -1433,7 +1433,10 @@ def build_uid(result: ExtractionResult, event: WorkEvent) -> str:
     return f"{digest}@planning-to-ics.local"
 
 
-def build_ics(result: ExtractionResult) -> str:
+def _build_ics_for_results(results: list[ExtractionResult], calendar_name: str) -> str:
+    if not results:
+        raise ValueError("Aucun planning à exporter.")
+
     now = datetime.now(UTC)
     lines = [
         "BEGIN:VCALENDAR",
@@ -1441,30 +1444,98 @@ def build_ics(result: ExtractionResult) -> str:
         "PRODID:-//Planning Radio France Local Agent//FR",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
-        f"X-WR-CALNAME:Planning {ics_escape(result.person_name)} S{result.week:02d} {result.year}",
+        f"X-WR-CALNAME:{ics_escape(calendar_name)}",
         f"X-WR-TIMEZONE:{DEFAULT_TIMEZONE}",
     ]
-    for event in result.events:
-        description = (
-            f"Source PDF: {result.pdf}\n"
-            f"Personne: {result.person_name}\n"
-            f"Semaine: {result.week} {result.year}\n\n"
-            f"Cellule extraite:\n{event.description}"
-        )
-        lines.extend(
-            [
-                "BEGIN:VEVENT",
-                f"UID:{build_uid(result, event)}",
-                f"DTSTAMP:{now.strftime('%Y%m%dT%H%M%SZ')}",
-                f"DTSTART:{utc_stamp(event.start)}",
-                f"DTEND:{utc_stamp(event.end)}",
-                f"SUMMARY:{ics_escape(event.summary)}",
-                f"DESCRIPTION:{ics_escape(description)}",
-                "END:VEVENT",
-            ]
-        )
+    seen_uids: dict[str, tuple[str, ...]] = {}
+    for result in sorted(results, key=lambda item: (item.year, item.week, normalize_text(item.person_name))):
+        for event in sorted(result.events, key=lambda item: (item.start, item.end, item.summary)):
+            uid = build_uid(result, event)
+            identity = (
+                event.start.isoformat(),
+                event.end.isoformat(),
+                event.summary,
+                event.description,
+                normalize_text(result.person_name),
+            )
+            previous = seen_uids.get(uid)
+            if previous is not None:
+                if previous == identity:
+                    continue
+                raise ValueError(f"Collision UID détectée pour l'événement '{event.summary}'.")
+            seen_uids[uid] = identity
+            description = (
+                f"Source PDF: {result.pdf}\n"
+                f"Personne: {result.person_name}\n"
+                f"Semaine: {result.week} {result.year}\n\n"
+                f"Cellule extraite:\n{event.description}"
+            )
+            lines.extend(
+                [
+                    "BEGIN:VEVENT",
+                    f"UID:{uid}",
+                    f"DTSTAMP:{now.strftime('%Y%m%dT%H%M%SZ')}",
+                    f"DTSTART:{utc_stamp(event.start)}",
+                    f"DTEND:{utc_stamp(event.end)}",
+                    f"SUMMARY:{ics_escape(event.summary)}",
+                    f"DESCRIPTION:{ics_escape(description)}",
+                    "END:VEVENT",
+                ]
+            )
     lines.append("END:VCALENDAR")
     return "\r\n".join(fold_ics_line(line) for line in lines) + "\r\n"
+
+
+def build_ics(result: ExtractionResult) -> str:
+    return _build_ics_for_results(
+        [result],
+        f"Planning {result.person_name} S{result.week:02d} {result.year}",
+    )
+
+
+def combined_period_label(results: list[ExtractionResult], filename: bool = False) -> str:
+    periods = sorted({(result.year, result.week) for result in results})
+    if not periods:
+        raise ValueError("Aucune semaine à exporter.")
+    start_year, start_week = periods[0]
+    end_year, end_week = periods[-1]
+    if len(periods) == 1:
+        return f"S{start_week:02d}_{start_year}" if filename else f"S{start_week:02d} {start_year}"
+    mondays = [date.fromisocalendar(year, week, 1) for year, week in periods]
+    contiguous = all(
+        current - previous == timedelta(days=7)
+        for previous, current in zip(mondays, mondays[1:])
+    )
+    if not contiguous:
+        if filename:
+            if len({year for year, _week in periods}) == 1:
+                weeks = "-".join(f"S{week:02d}" for _year, week in periods)
+                return f"{weeks}_{start_year}"
+            return "-".join(f"S{week:02d}_{year}" for year, week in periods)
+        return ", ".join(f"S{week:02d} {year}" for year, week in periods)
+    if start_year == end_year:
+        return (
+            f"S{start_week:02d}-S{end_week:02d}_{start_year}"
+            if filename
+            else f"S{start_week:02d} à S{end_week:02d} {start_year}"
+        )
+    return (
+        f"S{start_week:02d}_{start_year}-S{end_week:02d}_{end_year}"
+        if filename
+        else f"S{start_week:02d} {start_year} à S{end_week:02d} {end_year}"
+    )
+
+
+def build_combined_ics(results: list[ExtractionResult]) -> str:
+    if not results:
+        raise ValueError("Aucun planning à regrouper.")
+    people = {normalize_text(result.person_name) for result in results}
+    if len(people) != 1:
+        raise ValueError("Les semaines regroupées doivent appartenir au même technicien.")
+    return _build_ics_for_results(
+        results,
+        f"Planning {results[0].person_name} {combined_period_label(results)}",
+    )
 
 
 def output_ics_path(output_dir: Path, result: ExtractionResult) -> Path:
@@ -1472,9 +1543,23 @@ def output_ics_path(output_dir: Path, result: ExtractionResult) -> Path:
     return output_dir / f"Planning_{first}_{last}_S{result.week:02d}_{result.year}.ics"
 
 
+def combined_output_ics_path(output_dir: Path, results: list[ExtractionResult]) -> Path:
+    if not results:
+        raise ValueError("Aucun planning à regrouper.")
+    first, last = canonical_person_for_filename(results[0].person_name)
+    return output_dir / f"Planning_{first}_{last}_{combined_period_label(results, filename=True)}.ics"
+
+
 def write_ics_file(path: Path, result: ExtractionResult) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(ICS_FILE_BOM + build_ics(result).encode(ICS_FILE_ENCODING, errors="strict"))
+
+
+def write_combined_ics_file(path: Path, results: list[ExtractionResult]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(
+        ICS_FILE_BOM + build_combined_ics(results).encode(ICS_FILE_ENCODING, errors="strict")
+    )
 
 
 def write_log(output_dir: Path, result: ExtractionResult, ics_path: Path | None) -> None:

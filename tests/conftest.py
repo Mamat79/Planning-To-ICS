@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -13,20 +14,39 @@ def paragraph(text: str, style: ParagraphStyle) -> Paragraph:
     return Paragraph(text.replace("\n", "<br/>"), style)
 
 
-def build_planning_pdf(path: Path, second_person: str = "MARTIN\nBOB") -> None:
+FRENCH_MONTHS = {
+    1: "Janv.",
+    2: "Févr.",
+    3: "Mars",
+    4: "Avr.",
+    5: "Mai",
+    6: "Juin",
+    7: "Juil.",
+    8: "Août",
+    9: "Sept.",
+    10: "Oct.",
+    11: "Nov.",
+    12: "Déc.",
+}
+FRENCH_DAYS = ("Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam.", "Dim.")
+
+
+def build_planning_pdf(
+    path: Path,
+    second_person: str = "MARTIN\nBOB",
+    *,
+    year: int = 2026,
+    week: int = 30,
+) -> None:
     style = ParagraphStyle("cell", fontName="Helvetica", fontSize=7, leading=8)
     header_style = ParagraphStyle("header", parent=style, fontName="Helvetica-Bold")
-    days = [
-        "Lun. 20 Juil.",
-        "Mar. 21 Juil.",
-        "Mer. 22 Juil.",
-        "Jeu. 23 Juil.",
-        "Ven. 24 Juil.",
-        "Sam. 25 Juil.",
-        "Dim. 26 Juil.",
-    ]
+    monday = date.fromisocalendar(year, week, 1)
+    days = []
+    for offset, day_name in enumerate(FRENCH_DAYS):
+        current = monday + timedelta(days=offset)
+        days.append(f"{day_name} {current.day} {FRENCH_MONTHS[current.month]}")
     data = [
-        [paragraph("2026\nSemaine 30", header_style)]
+        [paragraph(f"{year}\nSemaine {week}", header_style)]
         + [paragraph(day, header_style) for day in days]
         + [paragraph("Total", header_style)],
         [
