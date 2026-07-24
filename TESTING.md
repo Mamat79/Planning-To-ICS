@@ -16,8 +16,8 @@ La notice PDF est générée et contrôlée ainsi :
 
 ```powershell
 python .\tools\make_user_guide.py
-pdfinfo .\output\pdf\Planning_to_ICS_V1.08_Notice.pdf
-pdftoppm -png .\output\pdf\Planning_to_ICS_V1.08_Notice.pdf .\tmp\pdfs\notice
+pdfinfo .\output\pdf\Planning_to_ICS_V1.09_Notice.pdf
+pdftoppm -png .\output\pdf\Planning_to_ICS_V1.09_Notice.pdf .\tmp\pdfs\notice
 ```
 
 La construction Windows utilise PyInstaller puis Inno Setup. La construction

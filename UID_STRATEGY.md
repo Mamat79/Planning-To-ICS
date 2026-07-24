@@ -1,6 +1,6 @@
 # Strategie des UID ICS
 
-La V1.08 attribue a chaque evenement un `UID` deterministe construit a partir de :
+La V1.09 attribue a chaque evenement un `UID` deterministe construit a partir de :
 
 - la personne normalisee ;
 - la semaine et l'annee du planning ;

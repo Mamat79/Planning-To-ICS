@@ -1,4 +1,4 @@
-# Planning to ICS V1.08
+# Planning to ICS V1.09
 
 Application locale pour Windows et macOS permettant de générer des fichiers calendrier .ics compatibles Outlook à partir des plannings PDF hebdomadaires RF-Ext.
 
@@ -13,14 +13,14 @@ Le projet a commencé avec des scripts manuels, de l'OCR et des traitements de f
 
 ## Télécharger et installer
 
-Le téléchargement le plus simple est ici : [Télécharger l'installateur Windows V1.08](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_Setup.exe).
+Le téléchargement le plus simple est ici : [Télécharger l'installateur Windows V1.09](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.09/Planning_to_ICS_V1.09_Setup.exe).
 
 Si le téléchargement direct ne démarre pas :
 
 1. Ouvrir la [page des Releases GitHub](https://github.com/Mamat79/Planning-To-ICS/releases).
-2. Cliquer sur `v1.08` dans la liste.
+2. Cliquer sur `v1.09` dans la liste.
 3. Descendre jusqu'à la rubrique **Assets**.
-4. Cliquer sur `Planning_to_ICS_V1.08_Setup.exe`.
+4. Cliquer sur `Planning_to_ICS_V1.09_Setup.exe`.
 5. Ouvrir le fichier téléchargé pour lancer l'installation.
 
 L'installateur contient l'application compilée et ses dépendances. Python n'est pas nécessaire sur le PC cible.
@@ -37,7 +37,7 @@ Si une version de Planning to ICS ou Planning To ICS est déjà installée, l'as
 
 ### macOS
 
-Télécharger le paquet [Planning_to_ICS_V1.08_macOS.dmg](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_macOS.dmg).
+Le paquet macOS V1.09 sera ajouté à la même Release après sa compilation sur macOS.
 
 1. Ouvrir le fichier `.dmg` téléchargé.
 2. Faire glisser `Planning To ICS` dans le dossier **Applications**.
@@ -90,7 +90,7 @@ L'application crée le fichier ICS, mais elle ne l'ajoute pas automatiquement da
 
 Tutoriel vidéo sous-titré : [télécharger le tutoriel V1.08](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_Tutoriel.mp4).
 
-Notice PDF : [télécharger la notice rapide V1.08](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_Notice.pdf).
+Notice PDF : [télécharger la notice rapide V1.09](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.09/Planning_to_ICS_V1.09_Notice.pdf).
 
 L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visible. Fermer la fenêtre arrête complètement l'application.
 

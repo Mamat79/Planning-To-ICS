@@ -192,7 +192,7 @@ def draw_page(canvas, document) -> None:
     canvas.line(20 * mm, 15 * mm, width - 20 * mm, 15 * mm)
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(MUTED)
-    canvas.drawString(20 * mm, 9.5 * mm, "Planning to ICS V1.08")
+    canvas.drawString(20 * mm, 9.5 * mm, "Planning to ICS V1.09")
     canvas.drawCentredString(width / 2, 9.5 * mm, "By Mamat")
     canvas.setFont("Helvetica", 6.5)
     canvas.drawCentredString(width / 2, 6.5 * mm, "et ses agents")
@@ -211,7 +211,7 @@ def build_guide(output: Path) -> Path:
         leftMargin=21 * mm,
         topMargin=18 * mm,
         bottomMargin=21 * mm,
-        title="Notice Planning to ICS V1.08",
+        title="Notice Planning to ICS V1.09",
         author="Mamat et ses agents",
         subject="Générer puis importer un planning ICS",
     )
@@ -219,7 +219,7 @@ def build_guide(output: Path) -> Path:
     story = [
         Spacer(1, 15 * mm),
         Paragraph("Planning to ICS", guide_styles["title"]),
-        Paragraph("Notice rapide - V1.08", guide_styles["subtitle"]),
+        Paragraph("Notice rapide - V1.09", guide_styles["subtitle"]),
         callout(
             "<b>But :</b> choisir un planning PDF, vérifier les vacations d'un ou plusieurs "
             "techniciens, générer les fichiers ICS, puis les importer dans l'agenda voulu.",
@@ -372,7 +372,7 @@ def main() -> int:
         "output",
         nargs="?",
         type=Path,
-        default=Path("output/pdf/Planning_to_ICS_V1.08_Notice.pdf"),
+        default=Path("output/pdf/Planning_to_ICS_V1.09_Notice.pdf"),
     )
     args = parser.parse_args()
     print(build_guide(args.output).resolve())
