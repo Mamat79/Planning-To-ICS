@@ -1,15 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+
+release_version = os.environ.get('PLANNING_RELEASE_VERSION', '2.0')
+notice_path = f'output/pdf/Planning_to_ICS_V{release_version}_Notice.pdf'
+
 a = Analysis(
-    ['planning_ui.py'],
+    ['planning_native.py'],
     pathex=[],
     binaries=[],
-    datas=[],
-    hiddenimports=['tkinter', 'tkinter.filedialog', 'webview'],
+    datas=[
+        ('assets/planning-to-ics.png', 'assets'),
+        (notice_path, '.'),
+    ],
+    hiddenimports=['tzdata'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['tkinter', 'webview'],
     noarchive=False,
     optimize=0,
 )
@@ -39,4 +47,11 @@ app = BUNDLE(
     name='Planning To ICS.app',
     icon='assets/planning-to-ics.icns',
     bundle_identifier='com.mamat.planning-to-ics',
+    info_plist={
+        'CFBundleDisplayName': 'Planning to ICS',
+        'CFBundleName': 'Planning to ICS',
+        'CFBundleShortVersionString': release_version,
+        'CFBundleVersion': release_version,
+        'NSHighResolutionCapable': True,
+    },
 )

@@ -1,6 +1,6 @@
 #define MyAppName "Planning to ICS"
-#define MyAppVersion "1.09"
-#define MyAppPublisher "Mamat"
+#define MyAppVersion "2.0"
+#define MyAppPublisher "Mamat et ses agents"
 #define MyAppExeName "Planning to ICS.exe"
 
 [Setup]
@@ -15,7 +15,7 @@ DisableDirPage=no
 DisableProgramGroupPage=no
 PrivilegesRequired=lowest
 OutputDir=..\installer-output
-OutputBaseFilename=Planning_to_ICS_V1.09_Setup
+OutputBaseFilename=Planning_to_ICS_V2.0_Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -31,7 +31,7 @@ Name: "desktopicon"; Description: "Créer un raccourci sur le bureau"; GroupDesc
 [Files]
 Source: "..\dist\Planning to ICS\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\output\pdf\Planning_to_ICS_V1.09_Notice.pdf"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\output\pdf\Planning_to_ICS_V2.0_Notice.pdf"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}{code:GetShortcutSuffix}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: startmenuicon

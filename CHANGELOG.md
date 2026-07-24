@@ -1,6 +1,6 @@
 # Journal des modifications
 
-## V2.0 - Préversion native locale
+## V2.0
 
 - remplace l'interface web locale par une fenêtre PySide6/Qt native ;
 - conserve l'extraction PDF et la génération ICS éprouvées de la V1.09 ;
@@ -11,7 +11,9 @@
 - applique une palette claire ou sombre complète aux listes et fenêtres contextuelles ;
 - restaure l'icône appréciée de la V1.09 et la convertit en ICO multi-résolution ;
 - ajoute l'ouverture de la notice PDF depuis le menu `Aide` ;
-- cette préversion reste sur la branche locale `v2-native` et n'est pas publiée.
+- publie une application réellement native sans navigateur ni serveur HTTP local ;
+- fournit un installateur Windows et un paquet macOS autonomes ;
+- conserve les anciennes releases accessibles sur GitHub.
 
 ## V1.09
 

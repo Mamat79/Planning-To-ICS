@@ -4,7 +4,7 @@ Depuis la racine du dépôt :
 
 ```powershell
 python -m pytest -q
-python -m py_compile planning_to_ics.py planning_ui.py
+python -m py_compile planning_to_ics.py planning_native.py planning_services.py
 ```
 
 Les tests couvrent notamment les accents UTF-8, les pauses multiples, les
@@ -15,9 +15,9 @@ techniciens et les lanceurs Windows/macOS/Linux.
 La notice PDF est générée et contrôlée ainsi :
 
 ```powershell
-python .\tools\make_user_guide.py
-pdfinfo .\output\pdf\Planning_to_ICS_V1.09_Notice.pdf
-pdftoppm -png .\output\pdf\Planning_to_ICS_V1.09_Notice.pdf .\tmp\pdfs\notice
+python .\tools\make_user_guide.py .\output\pdf\Planning_to_ICS_V2.0_Notice.pdf --version V2.0
+pdfinfo .\output\pdf\Planning_to_ICS_V2.0_Notice.pdf
+pdftoppm -png .\output\pdf\Planning_to_ICS_V2.0_Notice.pdf .\tmp\pdfs\notice
 ```
 
 La construction Windows utilise PyInstaller puis Inno Setup. La construction

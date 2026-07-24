@@ -4,8 +4,8 @@ La V2 remplace l'interface web locale de la V1 par une application de bureau
 PySide6/Qt. Elle n'ouvre aucun navigateur, n'embarque aucune page web et ne
 démarre aucun serveur HTTP.
 
-Cette version est développée dans la branche locale `v2-native`. Elle reste en
-test sur le PC de développement et ne doit pas être publiée avant validation.
+La V2.0 est la version principale publiée dans `main`. Les anciennes releases
+restent disponibles sur GitHub.
 
 ## Parcours disponibles
 
@@ -28,8 +28,7 @@ Les réglages utilisent le même fichier que la V1 :
 %APPDATA%\Planning To ICS\settings.json
 ```
 
-La V1.09 et la V2 peuvent donc utiliser les mêmes dossiers mémorisés tout en
-restant installées côte à côte.
+Une installation V2 remplaçant la V1 conserve donc les dossiers mémorisés.
 
 ## Lancement en développement
 
@@ -44,12 +43,12 @@ $env:QT_QPA_PLATFORM = "offscreen"
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-## Compilation locale de test
+## Compilation
 
 ```powershell
+$env:PLANNING_RELEASE_VERSION = "2.0"
 .\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean ".\Planning To ICS V2.spec"
 ```
 
-Le résultat local se trouve dans `dist\Planning to ICS V2`. La création d'un
-installateur de diffusion, d'une archive et d'une Release GitHub est volontairement
-reportée jusqu'à la demande explicite `Compile et publie`.
+Le résultat local se trouve dans `dist\Planning to ICS`. L'installateur Windows
+est ensuite généré avec `installer\PlanningToICS.iss`.

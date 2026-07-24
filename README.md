@@ -1,10 +1,9 @@
-# Planning to ICS V1.09
+# Planning to ICS V2.0
 
-> Une V2 native PySide6/Qt est en cours de test local sur la branche
-> `v2-native`. Elle fonctionne sans navigateur ni serveur HTTP. Voir
-> [V2_NATIVE.md](V2_NATIVE.md). La V1.09 reste la version publique stable.
-
-Application locale pour Windows et macOS permettant de générer des fichiers calendrier .ics compatibles Outlook à partir des plannings PDF hebdomadaires RF-Ext.
+Application native pour Windows et macOS permettant de générer des fichiers
+calendrier `.ics` compatibles Outlook à partir des plannings PDF hebdomadaires
+RF-Ext. La V2 fonctionne dans sa propre fenêtre, sans navigateur et sans serveur
+HTTP local.
 
 Il s'agit d'une application métier très spécifique, conçue pour le format des plannings utilisés dans mon travail. Le projet est public afin d'en faciliter l'accès à mes collègues, mais si vous ne travaillez pas avec ce type de planning, il y a peu de chances qu'il vous soit utile.
 
@@ -17,14 +16,14 @@ Le projet a commencé avec des scripts manuels, de l'OCR et des traitements de f
 
 ## Télécharger et installer
 
-Le téléchargement le plus simple est ici : [Télécharger l'installateur Windows V1.09](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.09/Planning_to_ICS_V1.09_Setup.exe).
+Le téléchargement le plus simple est ici : [Télécharger l'installateur Windows V2.0](https://github.com/Mamat79/Planning-To-ICS/releases/download/v2.0/Planning_to_ICS_V2.0_Setup.exe).
 
 Si le téléchargement direct ne démarre pas :
 
 1. Ouvrir la [page des Releases GitHub](https://github.com/Mamat79/Planning-To-ICS/releases).
-2. Cliquer sur `v1.09` dans la liste.
+2. Cliquer sur `v2.0` dans la liste.
 3. Descendre jusqu'à la rubrique **Assets**.
-4. Cliquer sur `Planning_to_ICS_V1.09_Setup.exe`.
+4. Cliquer sur `Planning_to_ICS_V2.0_Setup.exe`.
 5. Ouvrir le fichier téléchargé pour lancer l'installation.
 
 L'installateur contient l'application compilée et ses dépendances. Python n'est pas nécessaire sur le PC cible.
@@ -37,11 +36,18 @@ L'assistant d'installation permet de choisir le dossier d'installation. Par déf
 
 L'assistant propose la création de raccourcis, avec un raccourci dans le menu Démarrer coché par défaut. Le raccourci Bureau reste optionnel.
 
-Si une version de Planning to ICS ou Planning To ICS est déjà installée, l'assistant le détecte au démarrage. Il propose soit de remplacer la version existante, soit d'installer la nouvelle version en plus dans un autre dossier avec des raccourcis séparés.
+Si une version de Planning to ICS ou Planning To ICS est déjà installée,
+l'assistant le détecte au démarrage. Il propose soit de remplacer la version
+existante, soit d'installer la nouvelle version en plus dans un autre dossier
+avec des raccourcis séparés.
+
+Les anciennes versions restent téléchargeables depuis la
+[page des Releases](https://github.com/Mamat79/Planning-To-ICS/releases),
+notamment la [V1.09](https://github.com/Mamat79/Planning-To-ICS/releases/tag/v1.09).
 
 ### macOS
 
-Télécharger le paquet [Planning_to_ICS_V1.09_macOS.dmg](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.09/Planning_to_ICS_V1.09_macOS.dmg).
+Télécharger le paquet [Planning_to_ICS_V2.0_macOS.dmg](https://github.com/Mamat79/Planning-To-ICS/releases/download/v2.0/Planning_to_ICS_V2.0_macOS.dmg).
 
 1. Ouvrir le fichier `.dmg` téléchargé.
 2. Faire glisser `Planning To ICS` dans le dossier **Applications**.
@@ -71,8 +77,8 @@ L'application s'ouvre dans une fenêtre dédiée avec :
 - la modification des événements après prévisualisation ;
 - un bouton de génération ICS ;
 - des boutons pour ouvrir l'ICS ou afficher son dossier après génération ;
-- un bouton `Quitter l'application` et une fermeture complète avec la croix de la fenêtre.
-- un mode sombre et un bouton de vérification de la dernière version publiée ;
+- une fermeture complète avec la croix de la fenêtre ou `Fichier > Quitter` ;
+- des modes clair et sombre ;
 - l'export, l'import et la réinitialisation des réglages mémorisés.
 
 Le dossier des plannings et le dossier d'export sont mémorisés entre deux lancements.
@@ -92,11 +98,13 @@ L'application crée le fichier ICS, mais elle ne l'ajoute pas automatiquement da
 
 ## Tutoriel vidéo
 
-Tutoriel vidéo sous-titré : [télécharger le tutoriel V1.08](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.08/Planning_to_ICS_V1.08_Tutoriel.mp4).
+Le tutoriel vidéo V1.08 reste disponible dans les anciennes releases, mais son
+interface ne correspond plus à la V2.
 
-Notice PDF : [télécharger la notice rapide V1.09](https://github.com/Mamat79/Planning-To-ICS/releases/download/v1.09/Planning_to_ICS_V1.09_Notice.pdf).
+Notice PDF : [télécharger la notice rapide V2.0](https://github.com/Mamat79/Planning-To-ICS/releases/download/v2.0/Planning_to_ICS_V2.0_Notice.pdf).
 
-L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visible. Fermer la fenêtre arrête complètement l'application.
+L'application compilée ne laisse ni fenêtre CMD ni onglet de navigateur visible.
+Fermer la fenêtre arrête complètement l'application.
 
 ## Règles appliquées
 
@@ -126,7 +134,7 @@ python -m pip install -r requirements-dev.txt
 Lancement sans compilation :
 
 ```powershell
-python .\planning_ui.py
+python .\planning_native.py
 ```
 
 Exécution des tests automatiques :
@@ -140,7 +148,9 @@ Compilation de l'application :
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean ".\Planning To ICS.spec"
+python .\tools\make_user_guide.py ".\output\pdf\Planning_to_ICS_V2.0_Notice.pdf" --version V2.0
+$env:PLANNING_RELEASE_VERSION = "2.0"
+.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean ".\Planning To ICS V2.spec"
 ```
 
 Le paquet Windows distribué est construit avec Python 3.12 installé hors du Microsoft Store. Cette version a été validée pour le démarrage de l'exécutable autonome.
@@ -148,11 +158,8 @@ Le paquet Windows distribué est construit avec Python 3.12 installé hors du Mi
 Compilation de l'installateur :
 
 ```powershell
-python .\tools\make_user_guide.py
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" ".\installer\PlanningToICS.iss"
 ```
 
-Les installateurs compilés ne sont pas versionnés dans Git. Ils sont joints aux Releases GitHub afin de garder le dépôt source léger.
-
-Le glisser-déposer copie le PDF dans le dossier des plannings sélectionné afin
-qu'il reste disponible dans la liste au prochain lancement.
+Les installateurs compilés ne sont pas versionnés dans Git. Ils sont joints aux
+Releases GitHub afin de garder le dépôt source léger.
