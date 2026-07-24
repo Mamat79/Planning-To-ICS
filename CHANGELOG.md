@@ -7,6 +7,9 @@
 - ajoute des dialogues natifs pour l'édition, les exports multi-techniciens et
   les exports multi-semaines ;
 - conserve les réglages de dossiers existants et ajoute le mode sombre ;
+- corrige le contraste des menus en mode clair ;
+- ajoute une nouvelle icône multi-résolution aux exécutables et raccourcis ;
+- ajoute l'ouverture de la notice PDF depuis le menu `Aide` ;
 - cette préversion reste sur la branche locale `v2-native` et n'est pas publiée.
 
 ## V1.09
